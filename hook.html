@@ -1,73 +1,72 @@
 ﻿<!DOCTYPE html>
-<html style="width:100%; height:100%;">
+<html>
+
 <head>
-<meta charset="UTF-8" />
-<title>Pudge's HOOK</title>
-<meta name='author' content="Shukurimu" />
-<style>
-.info {
-	font-size:36px;
-	left:20px;
-}
-#dagger {
-	left:20px;
-	top:210px;
-	opacity:.9;
-	background:url(blink.png) no-repeat;
-	background-size:100px 100px;
-}
-a {
-	border:3px solid #19FFA3;
-	border-radius:6px;
-	padding:8px 80px;
-	cursor:pointer;
-	font-size:24px;
-}
-a:hover {
-	background:Gray;
-}
-abbr {
-	cursor:help;
-	color:Cyan;
-}
-td:first-child {
-	width:40%;
-	text-align:right;
-	padding-right:40px;
-}
-td:last-child {
-	width:40%;
-	text-align:left;
-	padding-left:40px;
-}
-</style>
+	<meta charset="utf-8" />
+	<title>Pudge's HOOK</title>
+	<style>
+		html, body {
+			height: 100%;
+		}
+
+		body {
+			margin: 0;
+			overflow: hidden;
+		}
+
+		.layer {
+			left: 0;
+			top: 0;
+			height: 100%;
+			width: 100%;
+		}
+
+		#svg {
+			/* background-color: yellow; */
+			height: 100%;
+			width: 100%;
+		}
+
+		#canvas {
+			background-image: url('blink.png');
+			background-repeat: no-repeat;
+			background-size: 0px 0px;
+		}
+
+		#score {
+			position: absolute;
+			top: 0;
+			right: 1vw;
+			color: orange;
+			font-size: 60px;
+		}
+
+		#timer {
+			position: absolute;
+			bottom: 2px;
+			right: 1vw;
+			font-size: 128px;
+			color: lightskyblue;
+		}
+
+	</style>
 </head>
-<body onContextMenu='return false;' style="width:100%; height:100%; overflow:hidden; font-family:Consolas;">
-<progress value='0' max='1' style="left:0; top:0; width:200px; height:10px; opacity:.7;"></progress>
-<span id='timer' style="right:1%; bottom:0; font-size:256px; color:rgba(0,0,128,.2);">60</span>
-<span id='gacha' style="font-size:72px; color:Crimson; opacity:0;"></span>
-<span id='score' class='info' style="top:20px; color:Orange;">0</span>
-<span id='level' class='info' style="top:65px; color:Sienna;">Lv.0</span>
-<span id='speed' class='info' style="top:110px; color:Violet;">MS:???</span>
-<span id='combo' class='info' style="top:155px; color:Indigo;">Combo*0</span>
-<canvas id='dagger' width='100' height='100'></canvas>
-<svg>
-<line id='skill' x1="0" y1="0" x2="0" y2="0" style="stroke:rgba(224,160,112,.8); stroke-width:6;" />
-<circle id='meats' r="20" fill="Purple" style="display:none;" />
-</svg>
-<div id='pudge' style="width:0; height:0; display:none;"><img src="pudge.png" style="left:-30px; top:-30px;" /></div>
-<div id='extra' style="width:100%; height:100%; background:rgba(0,0,0,.62); font-size:28px; color:White;">
-<div style="top:20%; left:20%; width:400%; text-align:left; line-height:140%;">
-反正就是模擬<abbr title="http://blog.dota2.com/">DOTA2</abbr>裡面Pudge最有名的招式...<br />
-你是粉紅色齒輪狀物件，滑鼠<b>右鍵</b>點地板(?)移動。<br />
-技能的快捷鍵為<b>Ｔ</b>，目標是移動中的紫色圓形物。<br />
-技能鍵按下後再點選滑鼠<b>左鍵</b>發動，距離不足會走近後才施放。<br />
-※<b>Space</b>鍵為<abbr title="可以瞬間移動到指定的位置上，有距離上限與冷卻時間。">BlinkDagger</abbr><br />
-※分數到達<abbr title="參照左上角進度條">特定值</abbr>之後將會升等(技能範圍提升)<br />
-※有效的攻擊只有伸長時的技能前端<br />
-※建議將視窗放到最大以取得較佳的遊戲體驗WWW<br /><br />
-　　　　　　　　　<a onClick='start();'>&gt;&gt; START &lt;&lt;</a></div></div>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-<script src="hook.min.js"></script>
+
+<body>
+	<!--
+	<progress value='0' max='1' style="left:0; top:0; width:200px; height:10px; opacity:.7;"></progress>
+	<span id='gacha' style="font-size:72px; color:Crimson; opacity:0;"></span>
+	<span id='combo' class='info' style="top:155px; color:Indigo;">Combo*0</span>
+	-->
+	<div class='layer' style='position: fixed;'>
+		<svg id='svg'></svg>
+	</div>
+	<div class='layer' style='position: absolute; z-index: -1;'>
+		<canvas id='canvas' width='60' height='60'></canvas>
+		<span id='score'>456</span>
+		<div id='timer'>123</div>
+	</div>
+	<script src="hook.js"></script>
 </body>
+
 </html>

@@ -1,247 +1,705 @@
-/* Created by Shukurimu */
+const InputMode = Object.freeze({ 'Move': 'auto', 'Hook': 'crosshair', 'Dagger': 'cell' });
 
-var trytimes, accurate;
-var maxw, maxh;
-var blink = 210;
-var maxspeed = [0, 8, 10, 12, 14];
-var minspeed = [0, 0, 1, 2, 3];
-var resetime = [0, 630, 420, 210, 99];
-var spot = [0, 16, 24, 32, 40];
-var leng = [9, 4, 7, 10, 13];
-var rang = [];
-var item = [];
-var fps, remain;
-var dagger, cd;
-var tips, body;
-var gacha, speed;
-var score, level;
-var combo, timer;
-var pudge, meats;
-var vCombo, vLevel;
-var vScore, vSpeed;
-var sQueue, sCatch;
-var sPress, sProgs;
-var mvSteps, mSpan;
-var sx, sy, vx, vy;
-var px, py, mx, my;
-var index, skill, icon;
+class Config {
+	static HookProjectileSpeed = 18;
+	static DaggerCastPoint = 10;
+	static DaggerMaxDistance = 1200;
+	static DaggerPenaltyRatio = 0.8;
+	static DaggerCooldown = 180;
+	static PudgeMovementSpeed = 6;
+	static LevelList = [
+		{	// Level 1
+			'scoreThreshold': 0,
+			'hookCastRange': 300,
+			'meatSpeedMin': 0.5,
+			'meatSpeedRange': 1,
+			'meatChangePeriod': 640,
+		},
+		{	// Level 2
+			'scoreThreshold': 23400,
+			'hookCastRange': 550,
+			'meatSpeedMin': 1.0,
+			'meatSpeedRange': 2,
+			'meatChangePeriod': 320,
+		},
+		{	// Level 3
+			'scoreThreshold': 86500,
+			'hookCastRange': 800,
+			'meatSpeedMin': 1.5,
+			'meatSpeedRange': 3,
+			'meatChangePeriod': 160,
+		},
+		{	// Level 4
+			'scoreThreshold': 179000,
+			'hookCastRange': 1050,
+			'meatSpeedMin': 2.0,
+			'meatSpeedRange': 4,
+			'meatChangePeriod': 80,
+		},
+	];
+	static currentLevel = 1;
+	static x = 800;
+	static y = 600;
 
-function adjust() {
-	if (vScore > 179e3) {
-		level.html("Lv." + (vLevel = 4));
-		tips.attr('max', 1).val(1);
-	} else if (vScore > 86500) {
-		level.html("Lv." + (vLevel = 3));
-		tips.attr('max', 179e3).val(vScore);
-	} else if (vScore > 23400) {
-		level.html("Lv." + (vLevel = 2));
-		tips.attr('max', 86500).val(vScore);
-	} else {
-		level.html("Lv." + (vLevel = 1));
-		tips.attr('max', 23400).val(vScore);
+	static get current() {
+		return this.LevelList[this.currentLevel];
 	}
-	return 0;
+
+	static reset = (boundaryX, boundaryY) => {
+		this.currentLevel = 1;
+		this.x = boundaryX;
+		this.y = boundaryY;
+		console.log('reset', this.x, this.y);
+		return;
+	}
+
 }
 
-function aniReq() {
-	if ((fps = (fps + 1) & 63) == 0) {
-		if (remain-- > 0) {
-			timer.html(remain);
+
+const getVectorPoint = (vectorFrom, vectorTo, multiplier) => {
+	return vectorFrom + (vectorTo - vectorFrom) * multiplier;
+};
+
+
+class AbstractObject {
+
+	constructor() {
+		this.x = 0;
+		this.y = 0;
+	}
+
+	updateModel = () => {
+		throw undefined;
+	}
+
+	updateView = () => {
+		throw undefined;
+	}
+
+}
+
+
+class Castable extends AbstractObject {
+
+	constructor(localCast) {
+		super();
+		this.localCast = localCast;
+		this.pending = false;
+		this.sourceX = 0;
+		this.sourceY = 0;
+		this.destX = 0;
+		this.destY = 0;
+		this.linkedObject = null;
+	}
+
+	isReady = () => {
+		throw undefined;
+	}
+
+	getSourceDestPos = (caster, x, y) => {
+		throw undefined;
+	}
+
+	register = (caster, x, y) => {
+		[ this.sourceX, this.sourceY, this.destX, this.destY ] = this.getSourceDestPos(caster, x, y);
+		caster.registerMove(this.sourceX, this.sourceY);
+		this.pending = true;
+		return;
+	}
+
+	unregister = () => {
+		this.pending = false;
+		return;
+	}
+
+	cast = (caster) => {
+		throw undefined;
+	}
+
+	tryCast = (caster) => {
+		if (this.pending && caster.withinRange(this.sourceX, this.sourceY, 1)) {
+			this.pending = false;
+			this.cast(caster);
+			return true;
 		} else {
-			sProgs = 9;
-			var best = Math.max(vScore, localStorage.hook ? Number(localStorage.hook) : 0);
-			localStorage.hook = best;
-			$('#extra').css({"font-size":"64px", "padding":"7% 0", "z-index":999})
-				.html("<table style='position:fixed;width:82%;left:9%;'>" +
-					"<caption style='border-bottom:1px solid Cyan;'>~GAMEOVER~</caption>" +
-					"<tr><td>TOP1SCORE</td><td id='top1'>...</td></tr>" +
-					"<tr><td>BestScore</td><td>" + best + "</td></tr>" +
-					"<tr><td>S C O R E</td><td>" + vScore + "</td></tr>" +
-					"<tr><td>Accuracy </td><td>" + (accurate * 100 / Math.max(trytimes, 1)).toFixed(2) + "%</td></tr>" +
-					"<tr><td colspan=2 style='text-align:center;'><a onClick='start();'>= Replay =</a></td></tr></table>").fadeIn(800);
-			$.post("hook.php", { score: vScore }, function(re) { $('#top1').html(re); });
+			return false;
+		}
+	}
+
+	isCasting = () => {
+		throw undefined;
+	}
+
+	linkObject = (target) => {
+		this.unlinkObject();
+		this.linkedObject = target;
+		target.forceMoveSource = this;
+		return;
+	}
+
+	unlinkObject = () => {
+		if (this.linkedObject != null) {
+			this.linkedObject.forceMoveSource = null;
+			this.linkedObject.unlinkedPostback();
+			this.linkedObject = null;
+		}
+		return;
+	}
+
+}
+
+
+class Dagger extends Castable {
+	static END_ANGLE = Math.PI * 1.5;
+	static STATE_READY = 0;
+	static STATE_CASTING = 1;
+	static STATE_COOLDOWN = 2;
+
+	constructor(canvas) {
+		super(true);
+		this.context2d = canvas.getContext("2d");
+		this.context2d.fillStyle = 'rgba(0, 0, 0, 0.6)';
+		this.canvasMidX = canvas.width * 0.5;
+		this.canvasMidY = canvas.height * 0.5;
+		this.canvasSpan = Math.max(canvas.width, canvas.height);
+		canvas.style.backgroundSize = `${canvas.width}px ${canvas.height}px`;
+
+		this.castingStart = Config.DaggerCastPoint + Config.DaggerCooldown;
+		this.castingEnd = Config.DaggerCooldown;
+		this.progress = 0;
+	}
+
+	isReady = () => {
+		return this.progress == 0;
+	}
+
+	getSourceDestPos = (caster, x, y) => {
+		let dx = x - caster.x;
+		let dy = y - caster.y;
+		let distance = Math.hypot(dx, dy);
+		let blinkDistance = distance <= Config.DaggerMaxDistance
+											? distance : (Config.DaggerMaxDistance * Config.DaggerPenaltyRatio);
+		console.log(`Blink ${distance.toFixed(0)} -> ${blinkDistance.toFixed(0)}`);
+
+		let multiplier = Math.min(blinkDistance / distance, 1.0);
+		return [
+			caster.x,
+			caster.y,
+			getVectorPoint(caster.x, x, multiplier),
+			getVectorPoint(caster.y, y, multiplier),
+		];
+	}
+
+	cast = (caster) => {
+		this.progress = this.castingStart;
+		this.linkObject(caster);
+		caster.x = this.destX;
+		caster.y = this.destY;
+		return;
+	}
+
+	isCasting = () => {
+		return this.progress > this.castingEnd;
+	}
+
+	updateModel = () => {
+		if (this.progress == 0) {
 			return;
 		}
-	}
-	
-	if (--mvSteps >= 0) {
-		pudge.css({"left":("+=" + vx), "top":("+=" + vy)});
-	} else if (mvSteps == -1) {
-		if (sQueue)	casting();
-	} else	;
-	
-	switch (sProgs) {
-	case 0:	break;
-	case 1:
-		skill.attr({x2:item[index][0], y2:item[index][1]});
-		if ((item[index][0] - px) * (item[index][0] - px) + (item[index][1] - py) * (item[index][1] - py) > 1600) {
-			if (index >= spot[vLevel]) {
-				sProgs = 2;
-				combo.html("Combo*" + (vCombo = 0));
-			} else	index++;
+		let remaining = --this.progress - this.castingEnd;
+		if (remaining >= 0) {
+			let multiplier = remaining / Config.DaggerCastPoint;
+			this.x = getVectorPoint(this.destX, this.sourceX, multiplier);
+			this.y = getVectorPoint(this.destY, this.sourceY, multiplier);
 		} else {
-			sCatch = true;
-			sProgs = 3;
-			++accurate;
-			var tmp = ~~(vSpeed * vSpeed * 41) + ((index * index + vLevel) << 4) + (Math.pow(vCombo, 3) << 3) + 379;
-			combo.html("Combo*" + ++vCombo);
-			score.html(vScore += tmp);	adjust();
-			gacha.html("+" + tmp).css({left:(px - 64), top:(py - 36), opacity:.4}).animate({top:"-=49px", opacity:0}, 480, "linear");
+			this.unlinkObject();
 		}
-		break;
-	case 2:
-		if (index > 0) {
-			skill.attr({x2:item[index][0], y2:item[index][1]});
-			index--;
-		} else {
-			skill.attr({x1:0, y1:0, x2:0, y2:0});
-			sProgs = 0;
-		}
-		break;
-	case 3:
-		if (index > 0) {
-			skill.attr({x2:item[index][0], y2:item[index][1]});
-			meats.attr({cx:(px = item[index][0]), cy:(py = item[index][1])});
-			index--;
-		} else {
-			skill.attr({x1:0, y1:0, x2:0, y2:0});
-			meats.attr({cx:(px = (.1 + Math.random() * .8) * maxw), cy:(py = (.1 + Math.random() * .8) * maxh)});
-			mSpan = sProgs = 0;
-			sCatch = false;
-		}
-		break;
+		return;
 	}
-	
-	if (cd < 0) {} else if (cd > 0) {
-		dagger.clearRect(0, 0, 100, 100);
-		dagger.beginPath();
-		dagger.moveTo(50, 50);
-		dagger.arc(50, 50, 100, Math.PI * (2 * (blink - --cd) / blink + 1.5), 1.5 * Math.PI);
-		dagger.fill();
-	} else {
-		icon.animate({opacity:.1}, 128).animate({opacity:.9}, 128);	--cd;
-	}
-	
-	if (!sCatch) {
-		if (mSpan-- > 0) {
-			if ((px < 20) || (px > maxw))	mx *= -1;
-			if ((py < 20) || (py > maxh))	my *= -1;
-			meats.attr({cx:(px += mx), cy:(py += my)});
-		} else {
-			var sx = (Math.random() - .5) * maxspeed[vLevel];
-			mx = (sx < 0) ? (sx - minspeed[vLevel]) : (sx + minspeed[vLevel]);
-			var sy = (Math.random() - .5) * maxspeed[vLevel];
-			my = (sy < 0) ? (sy - minspeed[vLevel]) : (sy + minspeed[vLevel]);
-			speed.html("MS:" + ~~((vSpeed = Math.sqrt(mx * mx + my * my)) * 59));
-			mSpan = resetime[vLevel];
+
+	updateView = () => {
+		this.context2d.clearRect(0, 0, this.canvasSpan, this.canvasSpan);
+		if (this.progress == 0) {
+			return;
 		}
+		let onCooldown = 1.0 - this.progress / this.castingStart;
+		this.context2d.beginPath();
+		this.context2d.moveTo(this.canvasMidX, this.canvasMidY);
+		this.context2d.arc(
+			this.canvasMidX, this.canvasMidY, this.canvasSpan,
+			Math.PI * (2.0 * onCooldown - 0.5), Dagger.END_ANGLE,
+			// The angle at which the arc starts / ends in radians, measured from the positive x-axis.
+		);
+		this.context2d.fill();
+		return;
 	}
-	window.requestAnimationFrame(aniReq);
-	return;
+
 }
 
-function casting() {
-	++trytimes;
-	sQueue = false;
-	var pos = pudge.position();
-	var deg = Math.atan((sy - pos.top) / (sx -= pos.left));
-	var phi = rang[vLevel] / spot[vLevel] * ((sx > 0) ? 1 : -1);
-	sx = Math.cos(deg) * phi;
-	sy = Math.sin(deg) * phi;
-	sProgs = index = 1;
-	for (var i = 1; i <= spot[vLevel]; i++) { item[i] = [pos.left + sx * i, pos.top + sy * i]; }
-	skill.attr({x1:pos.left, y1:pos.top, x2:pos.left, y2:pos.top});
-	return;
+
+class Hook extends Castable {
+	static STATE_READY = 0;
+	static STATE_LENGTHEN = 1;
+	static STATE_SHORTEN = 2;
+
+	constructor() {
+		super(false);
+		this.aniElem = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+		this.aniElem.setAttribute('stroke', 'brown');
+		this.aniElem.setAttribute('stroke-width', 5);
+
+		this.state = Hook.STATE_READY;
+		this.castingFrames = 0;
+		this.currentFrames = 0;
+	}
+
+	isReady = () => {
+		return this.state == Hook.STATE_READY;
+	}
+
+	getSourceDestPos = (caster, x, y) => {
+		let dx = x - caster.x;
+		let dy = y - caster.y;
+		let distance = Math.hypot(dx, dy);
+		let exceedance = distance - Config.current.hookCastRange;
+		let multiplier = Math.max(exceedance, 0.0) / distance;
+		return [
+			getVectorPoint(caster.x, x, multiplier),
+			getVectorPoint(caster.y, y, multiplier),
+			x,
+			y,
+		];
+	}
+
+	cast = (caster) => {
+		this.state = Hook.STATE_LENGTHEN;
+		let castRange = Config.current.hookCastRange;
+		this.castingFrames = ~~(castRange / Config.HookProjectileSpeed);  // fast truncate
+		this.currentFrames = 0;
+		this.sourceX = this.x = caster.x;
+		this.sourceY = this.y = caster.y;
+		let dx = this.destX - this.sourceX;
+		let dy = this.destY - this.sourceY;
+		let multiplier = castRange / Math.hypot(dx, dy);
+		this.destX = getVectorPoint(this.sourceX, this.destX, multiplier);
+		this.destY = getVectorPoint(this.sourceY, this.destY, multiplier);
+		return;
+	}
+
+	isCasting = () => {
+		return this.state != Hook.STATE_READY;
+	}
+
+	updateModel = () => {
+		switch (this.state) {
+			case Hook.STATE_READY:
+				return;
+			case Hook.STATE_LENGTHEN:
+				if (++this.currentFrames >= this.castingFrames) {
+					this.state = Hook.STATE_SHORTEN;
+				}
+				break;
+			case Hook.STATE_SHORTEN:
+				if (--this.currentFrames <= 0) {
+					this.state = Hook.STATE_READY;
+					this.unlinkObject();
+				}
+				break;
+		}
+		let multiplier = this.currentFrames / this.castingFrames;
+		this.x = getVectorPoint(this.sourceX, this.destX, multiplier);
+		this.y = getVectorPoint(this.sourceY, this.destY, multiplier);
+		return;
+	}
+
+	updateView = () => {
+		if (this.state == Hook.STATE_READY) {
+			this.aniElem.style.opacity = 0;
+			return;
+		}
+		this.aniElem.style.opacity = 1;
+		this.aniElem.setAttribute('x1', this.sourceX.toFixed(0));
+		this.aniElem.setAttribute('y1', this.sourceY.toFixed(0));
+		this.aniElem.setAttribute('x2', this.x.toFixed(0));
+		this.aniElem.setAttribute('y2', this.y.toFixed(0));
+		return;
+	}
+
+	isOffensive = () => {
+		return this.state == Hook.STATE_LENGTHEN;
+	}
+
+	hit = (prey) => {
+		this.state = Hook.STATE_SHORTEN;
+		this.linkObject(prey);
+		return;
+	}
+
 }
 
-$(document).ready(function() {
-	tips = $('progress');	body = $('body');
-	gacha = $('#gacha');	speed = $('#speed');
-	score = $('#score');	level = $('#level');
-	combo = $('#combo');	timer = $('#timer');
-	pudge = $('#pudge');	meats = $('#meats');
-	icon = $('#dagger');	skill = $('#skill');
-	dagger = document.getElementById('dagger').getContext("2d");
-	var grd = dagger.createRadialGradient(50, 50, 10, 50, 50, 99);
-	grd.addColorStop(0, "rgba(255,255,255,0)");
-	grd.addColorStop(1, "rgba(64,192,192,1)");
-	dagger.fillStyle = grd;
-	$('*').css("margin", "0");
-	$('b').css("color", "Yellow");
-	body.children().css("position", "fixed");
-	$('div').children().css("position", "relative");
-	$(document).mousedown(function(event) {
-		body.css("cursor", "auto");
-		if (sProgs > 0)	return;
-		sQueue = false;
-		var pos = pudge.position();
-		var dx = (sx = event.pageX) - pos.left;
-		var dy = (sy = event.pageY) - pos.top;
-		var dz = ~~Math.sqrt(dx * dx + dy * dy);
-		if (event.button == 2) {
-			mvSteps = dz >> 3;
-			vx = dx / mvSteps;
-			vy = dy / mvSteps;
-		} else if (sPress == 1) {
-			if (dz < rang[vLevel]) {
-				mvSteps = -2;
-				casting();
-			} else {
-				mvSteps = (dz - rang[vLevel]) >> 3;
-				vx = (dx << 3) / dz;
-				vy = (dy << 3) / dz;
-				sQueue = true;
+
+class Movable extends AbstractObject {
+
+	constructor(collisionSize) {
+		super();
+		this.collisionSize = collisionSize;
+		this.forceMoveSource = null;
+	}
+
+	withinRange = (x, y, value = this.collisionSize) => {
+		return Math.hypot(this.x - x, this.y - y) <= value;
+	}
+
+	clipPos = (axis) => {  // 'x' or 'y'
+		if (this[axis] < this.collisionSize) {
+			this[axis] = this.collisionSize;
+			return true;
+		}
+		let boundary = Config[axis] - this.collisionSize;
+		if (this[axis] > boundary) {
+			this[axis] = boundary;
+			return true;
+		}
+		return false;
+	}
+
+	normalMove = () => {
+		throw undefined;
+	}
+
+	unlinkedPostback = () => {
+		return;
+	}
+
+	updateModel = () => {
+		if (this.forceMoveSource == null) {
+			this.normalMove();
+		} else {
+			this.x = this.forceMoveSource.x;
+			this.y = this.forceMoveSource.y;
+		}
+		return;
+	}
+
+	updateView = () => {
+		this.aniElem.setAttribute('cx', this.x.toFixed(0));
+		this.aniElem.setAttribute('cy', this.y.toFixed(0));
+		return;
+	}
+
+}
+
+
+class Pudge extends Movable {
+
+	constructor(collisionSize, ...castableList) {
+		super(collisionSize);
+		this.aniElem = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+		this.aniElem.setAttribute('fill', 'pink');
+		this.aniElem.setAttribute('r', collisionSize);
+
+		this.destX = 0;
+		this.destY = 0;
+		this.castableList = castableList;
+	}
+
+	normalMove = () => {
+		if (this.castableList.some(c => c.isCasting())) {
+			return;
+		}
+		let dx = this.destX - this.x;
+		let dy = this.destY - this.y;
+		let distance = Math.hypot(dx, dy);
+		if (distance <= Config.PudgeMovementSpeed) {
+			this.x = this.destX;
+			this.y = this.destY;
+			this.castableList.forEach(c => c.tryCast(this) && this.stopAction());
+		} else {
+			let ratio = Config.PudgeMovementSpeed / distance;
+			this.x += dx * ratio;
+			this.y += dy * ratio;
+		}
+		this.clipPos('x');
+		this.clipPos('y');
+		return;
+	}
+
+	registerMove = (x, y) => {
+		if (this.castableList.some(c => c.isCasting())) {
+			return;
+		}
+		this.destX = x;
+		this.destY = y;
+		this.castableList.forEach(c => c.unregister());
+		return;
+	}
+
+	stopAction = () => {
+		this.destX = this.x;
+		this.destY = this.y;
+		this.castableList.forEach(c => c.unregister());
+		return;
+	}
+
+}
+
+
+class Meat extends Movable {
+
+	constructor(collisionSize) {
+		super(collisionSize);
+		this.aniElem = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+		this.aniElem.setAttribute('fill', 'purple');
+		this.aniElem.setAttribute('r', collisionSize);
+
+		this.deltaX = 0;
+		this.deltaY = 0;
+		this.currentSpeed = 0;
+		this.countdown = 0;
+	}
+
+	unlinkedPostback = () => {
+		this.randomizePosition();
+		this.randomizeMovement();
+		return;
+	}
+
+	randomizePosition = () => {
+		this.x = Math.random() * Config.x;
+		this.y = Math.random() * Config.y;
+		return;
+	}
+
+	randomizeMovement = () => {
+		let setting = Config.current;
+		let radians = Math.PI * 2.0 * Math.random();
+		this.currentSpeed = setting.meatSpeedMin + Math.random() * setting.meatSpeedRange;
+		this.deltaX = this.currentSpeed * Math.cos(radians);
+		this.deltaY = this.currentSpeed * Math.sin(radians);
+		this.countdown = ~~((Math.random() * 0.5 + 0.5) * setting.meatChangePeriod);
+		return;
+	}
+
+	normalMove = () => {
+		if (--this.countdown < 0) {
+			this.randomizeMovement();
+		}
+		if (this.clipPos('x')) {
+			this.deltaX *= -1;
+		}
+		if (this.clipPos('y')) {
+			this.deltaY *= -1;
+		}
+		this.x += this.deltaX;
+		this.y += this.deltaY;
+		return;
+	}
+
+}
+
+
+class Controller {
+	static objectList = [];
+	static meatList = [];
+	static pudge = null;
+	static hook = null;
+	static dagger = null;
+
+	static interval = null;
+	static raf = null;
+	static running = false;
+	static score = 0;
+	static castableInputMap = new Map();
+	static inputMode = 0;
+	static timerElement = null;
+	static timerValue = 60;
+
+	static setObjects = (pudge, hook, dagger, meatList) => {
+		this.objectList = Array.of(pudge, hook, dagger, ...meatList);
+		this.pudge = pudge;
+		this.hook = hook;
+		this.dagger = dagger;
+		this.meatList = meatList;
+		this.castableInputMap.set(InputMode.Hook, hook);
+		this.castableInputMap.set(InputMode.Dagger, dagger);
+		return;
+	}
+
+	static reset = (timer) => {
+		this.timerElement = timer;
+		this.timerElement.innerHTML = 0;
+	}
+
+	static updateModels = () => {
+		if (this.hook.isOffensive()) {
+			for (let meat of this.meatList) {
+				if (meat.withinRange(this.hook.x, this.hook.y)) {
+					this.hook.hit(meat);
+					break;
+				}
 			}
-		} else if (sPress == 2) {
-			var gx = (dz < rang[0]) ? dx : (dx * rang[0] / dz);
-			var gy = (dz < rang[0]) ? dy : (dy * rang[0] / dz);
-			pudge.animate({left:("+=" + gx), top:("+=" + gy)}, 99, "linear");
-			mvSteps = -2;	cd = blink;
-		} else	;
-		sPress = 0;
+		}
+		this.objectList.forEach(o => o.updateModel());
+		// this.timerElement.innerHTML = --this.timerValue;
 		return;
-	});
-	
-	$(document).keypress(function(event) {
-		if (event.which == 116) {
-			body.css("cursor", "crosshair");
-			sPress = 1;
-		} else if ((cd < 0) && (event.which == 32)) {
-			body.css("cursor", "cell");
-			sPress = 2;
+	}
+
+	static updateViews = () => {
+		this.objectList.forEach(o => o.updateView());
+		this.raf = window.requestAnimationFrame(this.updateViews);
+		return;
+	}
+
+	static start = () => {
+		this.pause();
+		this.interval = window.setInterval(this.updateModels, 10);
+		this.raf = window.requestAnimationFrame(this.updateViews);
+		this.running = true;
+		return;
+	}
+
+	static pause = () => {
+		window.clearInterval(this.interval);
+		window.cancelAnimationFrame(this.raf);
+		this.running = false;
+		return;
+	}
+
+	static switchMode = () => {
+		if (this.running) {
+			this.pause();
+			return false;
 		} else {
-			body.css("cursor", "auto");
-			mvSteps = -2;
-			sPress = 0;
-			sQueue = false;
+			this.start();
+			return true;
+		}
+	}
+
+	static playerMove = (x, y) => {
+		this.pudge.registerMove(x, y);
+		document.body.style.cursor = InputMode.Move;
+		return;
+	}
+
+	static setInputMode = (inputMode) => {
+		if (this.castableInputMap.get(inputMode).isReady()) {
+			this.inputMode = inputMode;
+			document.body.style.cursor = inputMode;
+		} else {
+			document.body.style.cursor = InputMode.Move;
 		}
 		return;
-	});
-});
+	}
 
-function start() {
-	maxw = window.innerWidth - 20;
-	maxh = window.innerHeight - 20;
-	$('svg').attr({width:(maxw + 99), height:(maxh + 99)});
-	skill.attr({x1:0, x2:0, y1:0, y2:0});
-	body.children().css("z-index", "-1");
-	for (var i = 0; i < 5; i++) { rang[i] = leng[i] * maxw * 0.064; }
-	mx = 7 * Math.random();	my = 4 * Math.random();
-	trytimes = accurate = sPress = sProgs = mvSteps = vCombo = 0;
-	timer.html(remain = 60);
-	score.html(vScore = 0);
-	level.html("Lv." + (vLevel = 1));
-	dagger.clearRect(0, 0, 100, 100);
-	tips.attr('max', 1).val(0);
-	fps = mSpan = 740;	cd = -1;
-	sQueue = sCatch = false;
-	$('#extra').fadeOut(600, function() {
-		icon.css("opacity", ".9");
-		speed.html("MS:" + Math.floor((vSpeed = Math.sqrt(mx * mx + my * my)) * 100));
-		pudge.css({left:"6%", top:"84%", display:"block"});
-		meats.attr({cx:(px = maxw * Math.random()), cy:(py = maxh * Math.random())}).css("display", "block");
-		window.requestAnimationFrame(aniReq);
+	static launchInput = (x, y) => {
+		switch (this.inputMode) {
+			case InputMode.Hook:
+				this.hook.register(this.pudge, x, y);
+				break;
+			case InputMode.Dagger:
+				this.dagger.register(this.pudge, x, y);
+				break;
+		}
+		document.body.style.cursor = this.inputMode = InputMode.Move;
 		return;
-	});
-	return;
+	}
+
+	// var tmp = ~~(vSpeed * vSpeed * 41) + ((index * index + vLevel) << 4) + (Math.pow(vCombo, 3) << 3) + 379;
+	// gacha.html("+" + tmp).css({ left: (px - 64), top: (py - 36), opacity: .4 }).animate({ top: "-=49px", opacity: 0 }, 480, "linear");
+	static gainScore = (score) => {
+		this.score += score;
+		let levelConfig = Config.LevelList;
+		if (levelConfig.length == Config.currentLevel) {
+			return;
+		}
+		for (let i = Config.currentLevel; i < levelConfig.length; ++i) {
+			let threshold = levelConfig[i].scoreThreshold;
+			if (this.score >= threshold) {
+				continue;
+			}
+			let base = levelConfig[i - 1].scoreThreshold;
+			this.experience = (this.score - base) / (threshold - base);
+			Config.currentLevel = i;
+			return;
+		}
+		this.experience = 1.0;
+		Config.currentLevel = levelConfig.length;
+		return;
+	}
+
 }
+
+
+window.oncontextmenu = (event) => {
+	event.preventDefault();
+	event.stopPropagation();
+	return;
+};
+
+
+window.onmousedown = (event) => {
+	if (!Controller.running) {
+		return;
+	}
+	switch (event.button) {
+		case 2:  // right-click
+			Controller.playerMove(event.clientX, event.clientY);
+			break;
+		case 0:  // left-click
+			Controller.launchInput(event.clientX, event.clientY);
+			break;
+		default:
+			console.log(event.button, event.clientX, event.clientY);
+	}
+	return;
+};
+
+
+window.onkeydown = (event) => {
+	switch (event.which) {
+		case 27:  // Escape
+			document.title = Controller.switchMode() ? '[Running]' : '[Paused]';
+			break;
+		case 32:  // Space
+			Controller.setInputMode(InputMode.Dagger);
+			break;
+		case 84:  // T
+			Controller.setInputMode(InputMode.Hook);
+			break;
+		default:
+			console.log(event.which);
+	}
+	return;
+};
+
+
+window.onload = function () {
+	Config.reset(window.innerWidth, window.innerHeight);
+
+	const canvas = document.querySelector("#canvas");
+	let dagger = new Dagger(canvas);
+	let hook = new Hook();
+	let pudge = new Pudge(20, hook, dagger);
+	let meatList = [
+		new Meat(16),
+		new Meat(15),
+		new Meat(14),
+		new Meat(13),
+		new Meat(12),
+	];
+
+	const svg = document.querySelector("#svg");
+	svg.appendChild(hook.aniElem);
+	svg.appendChild(pudge.aniElem);
+	meatList.forEach(m => svg.appendChild(m.aniElem));
+
+	Controller.setObjects(pudge, hook, dagger, meatList);
+	const timer = document.querySelector("#timer");
+	Controller.reset(timer);
+	Controller.start();
+	console.log('Oops');
+	return;
+};
+
+// var best = Math.max(vScore, localStorage.hook ? Number(localStorage.hook) : 0);
+// localStorage.hook = best;
