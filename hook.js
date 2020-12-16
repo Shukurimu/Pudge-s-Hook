@@ -1,44 +1,54 @@
+'use strict';
+
 const InputMode = Object.freeze({ 'Move': 'auto', 'Hook': 'crosshair', 'Dagger': 'cell' });
 
 class Config {
   // Time-based values are measured in millisecond.
+  static ModelUpdatePeriod = 12;
   static HookProjectileSpeed = 1500;
   static DaggerMaxDistance = 1200;
   static DaggerPenaltyRatio = 0.8;
   static DaggerBackswing = 120;
   static DaggerCooldown = 2400;
   static PudgeMovementSpeed = 300;
+  static PudgeCollisionSize = 20;
+  static MeatCollisionSize = 24;
+  static MeatAmount = 10;
   static LevelList = [
-    {	// Level 1
-      'scoreThreshold': 0,
-      'hookCastRange': 300,
+    {
+      'displayLevelText': "Lv1",
+      'scoreThreshold': 1200,
+      'hookCastRange': 600,
       'meatSpeedMin': 40,
       'meatSpeedRange': 100,
       'meatTrendPeriod': 4000,
     },
-    {	// Level 2
-      'scoreThreshold': 3200,
-      'hookCastRange': 550,
+    {
+      'displayLevelText': "Lv2",
+      'scoreThreshold': 3600,
+      'hookCastRange': 750,
       'meatSpeedMin': 60,
       'meatSpeedRange': 200,
-      'meatTrendPeriod': 3000,
+      'meatTrendPeriod': 3400,
     },
-    {	// Level 3
-      'scoreThreshold': 6400,
-      'hookCastRange': 800,
+    {
+      'displayLevelText': "Lv3",
+      'scoreThreshold': 10800,
+      'hookCastRange': 900,
       'meatSpeedMin': 80,
       'meatSpeedRange': 300,
-      'meatTrendPeriod': 2000,
+      'meatTrendPeriod': 2800,
     },
-    {	// Level 4
-      'scoreThreshold': 9600,
+    {
+      'displayLevelText': "Lv4",
+      'scoreThreshold': Infinity,
       'hookCastRange': 1050,
       'meatSpeedMin': 100,
       'meatSpeedRange': 400,
-      'meatTrendPeriod': 1000,
+      'meatTrendPeriod': 2200,
     },
   ];
-  static currentLevel = 1;
+  static currentLevel = 0;
   static currentScore = 0;
   static x = 800;
   static y = 600;
@@ -48,33 +58,32 @@ class Config {
   }
 
   static reset(boundaryX, boundaryY) {
-    this.currentLevel = 1;
+    this.currentLevel = 0;
     this.x = boundaryX;
     this.y = boundaryY;
-    console.log('reset', this.x, this.y);
+    console.log('boundary', this.x, this.y);
     return;
   }
 
-  // var tmp = ~~(vSpeed * vSpeed * 41) + ((index * index + vLevel) << 4) + (Math.pow(vCombo, 3) << 3) + 379;
-  static gainScore(score) {
-    this.currentScore += score;
-    let levelConfig = Config.LevelList;
-    if (levelConfig.length == Config.currentLevel) {
-      return;
+  static gainScore(meatMovementSpeed, hookStreak) {
+    let score = 40 * this.currentLevel + meatMovementSpeed * (0.75 + 0.25 * hookStreak);
+    score = Math.floor(score);
+    const newScore = this.currentScore += score;
+    this.currentLevel = this.LevelList.findIndex(c => c.scoreThreshold >= newScore);
+    return score;
+  }
+
+  static get expValue() {
+    if (this.currentLevel === this.LevelList.length - 1) {
+      return 1;
     }
-    for (let i = Config.currentLevel; i < levelConfig.length; ++i) {
-      let threshold = levelConfig[i].scoreThreshold;
-      if (this.currentScore >= threshold) {
-        continue;
-      }
-      let base = levelConfig[i - 1].scoreThreshold;
-      this.experience = (this.score - base) / (threshold - base);
-      Config.currentLevel = i;
-      return;
-    }
-    this.experience = 1.0;
-    Config.currentLevel = levelConfig.length;
-    return;
+    const base = this.currentLevel === 0 ? 0 : this.LevelList[this.currentLevel - 1].scoreThreshold;
+    const total = this.LevelList[this.currentLevel].scoreThreshold;
+    return (this.currentScore - base) / total;
+  }
+
+  get record() {
+    return Number.parseInt(window.localStorage.getItem('score') ?? '0', 10);
   }
 
 }
@@ -105,10 +114,19 @@ class Clock {
     return;
   }
 
+  static toggle() {
+    if (this.running ^= true) {
+      this.play();
+    } else {
+      this.stop();
+    }
+    return;
+  }
+
   static update() {
     if (this.running) {
       let now = performance.now();
-      let delta = this.latestPlay == null ? 0 : (now - this.latestPlay);
+      let delta = this.latestPlay === null ? 0 : (now - this.latestPlay);
       this.executionMillis += delta;
       this.latestPlay = now;
     }
@@ -240,7 +258,7 @@ class Dagger extends Castable {
       ? distance : (Config.DaggerMaxDistance * Config.DaggerPenaltyRatio);
     console.log(`Blink ${distance.toFixed(0)} -> ${blinkDistance.toFixed(0)}`);
 
-    let multiplier = Math.min(blinkDistance / distance, 1.0);
+    let multiplier = distance < 1 ? 1 : Math.min(blinkDistance / distance, 1);
     return [
       caster.x,
       caster.y,
@@ -254,8 +272,6 @@ class Dagger extends Castable {
     this.skillEnd = Clock.now + Config.DaggerCooldown;
     this.blinkFinished = false;
     this.linkObject(caster);
-    caster.x = this.destX;
-    caster.y = this.destY;
     return;
   }
 
@@ -282,7 +298,7 @@ class Dagger extends Castable {
     this.context2d.moveTo(this.canvasMidX, this.canvasMidY);
     this.context2d.arc(
       this.canvasMidX, this.canvasMidY, this.canvasSpan,
-      Math.PI * (2.0 * multiplier - 0.5), Dagger.END_ANGLE,
+      Math.PI * (2 * multiplier - 0.5), Dagger.END_ANGLE,
       // The angle at which the arc starts / ends in radians, measured from the positive x-axis.
     );
     this.context2d.fill();
@@ -294,14 +310,15 @@ class Dagger extends Castable {
 
 class Hook extends Castable {
 
-  constructor() {
+  constructor(element) {
     super(false);
-    this.aniElem = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    this.aniElem = element;
     this.aniElem.setAttribute('stroke', 'brown');
     this.aniElem.setAttribute('stroke-width', 5);
 
     this.skillStart = 0;
     this.skillMid = 0;
+    this.trialList = [];
   }
 
   getSrcDestPos(caster, x, y) {
@@ -309,7 +326,7 @@ class Hook extends Castable {
     let dy = y - caster.y;
     let distance = Math.hypot(dx, dy);
     let exceedance = distance - Config.current.hookCastRange;
-    let multiplier = Math.max(exceedance, 0.0) / distance;
+    let multiplier = Math.max(exceedance, 0) / distance;
     return [
       getVectorPoint(caster.x, x, multiplier),
       getVectorPoint(caster.y, y, multiplier),
@@ -331,6 +348,7 @@ class Hook extends Castable {
     let multiplier = castRange / Math.hypot(dx, dy);
     this.destX = getVectorPoint(this.srcX, this.destX, multiplier);
     this.destY = getVectorPoint(this.srcY, this.destY, multiplier);
+    this.trialList.push(0);
     return;
   }
 
@@ -369,10 +387,15 @@ class Hook extends Castable {
         this.skillMid = Clock.now;
         this.skillEnd = this.backswingEnd = 2 * this.skillMid - this.skillStart;
         this.linkObject(prey);
+        this.trialList[this.trialList.length - 1] = 1;
         return prey;
       }
     }
     return null;
+  }
+
+  get streak() {
+    return this.trialList.length - this.trialList.lastIndexOf(0) - 1;
   }
 
 }
@@ -418,11 +441,11 @@ class Movable extends AbstractObject {
   }
 
   updateModel(elapse) {
-    if (this.forceMoveSource == null) {
-      this.normalMove(elapse);
+    if (this.forceMoveSource) {
+      this.x = this.destX = this.forceMoveSource.x;
+      this.y = this.destY = this.forceMoveSource.y;
     } else {
-      this.x = this.forceMoveSource.x;
-      this.y = this.forceMoveSource.y;
+      this.normalMove(elapse);
     }
     return;
   }
@@ -438,16 +461,20 @@ class Movable extends AbstractObject {
 
 class Pudge extends Movable {
 
-  constructor(collisionSize, ...castableList) {
-    super(collisionSize);
-    this.aniElem = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    this.aniElem.setAttribute('opacity', 0.7);
+  constructor(element) {
+    super(Config.PudgeCollisionSize);
+    this.aniElem = element;
     this.aniElem.setAttribute('fill', 'pink');
-    this.aniElem.setAttribute('r', collisionSize);
+    this.aniElem.setAttribute('r', Config.PudgeCollisionSize);
 
-    this.destX = 0;
-    this.destY = 0;
-    this.castableList = castableList;
+    this.x = this.destX = Config.x * 0.5;
+    this.y = this.destY = Config.y * 0.5;
+    this.castableList = [];
+  }
+
+  addCastable(...castables) {
+    this.castableList.push(...castables);
+    return;
   }
 
   normalMove(elapse) {
@@ -494,12 +521,11 @@ class Pudge extends Movable {
 
 class Meat extends Movable {
 
-  constructor(collisionSize) {
-    super(collisionSize);
-    this.aniElem = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    this.aniElem.setAttribute('opacity', 0.7);
+  constructor(element) {
+    super(Config.MeatCollisionSize);
+    this.aniElem = element;
     this.aniElem.setAttribute('fill', 'purple');
-    this.aniElem.setAttribute('r', collisionSize);
+    this.aniElem.setAttribute('r', Config.MeatCollisionSize);
 
     this.deltaX = 0;
     this.deltaY = 0;
@@ -516,7 +542,7 @@ class Meat extends Movable {
 
   randomizeMovement() {
     let setting = Config.current;
-    let radians = Math.PI * 2.0 * Math.random();
+    let radians = Math.PI * 2 * Math.random();
     this.currentSpeed = setting.meatSpeedMin + Math.random() * setting.meatSpeedRange;
     this.deltaX = this.currentSpeed * Math.cos(radians);
     this.deltaY = this.currentSpeed * Math.sin(radians);
@@ -544,59 +570,98 @@ class Meat extends Movable {
 
 
 class Controller {
-  static objectList = [];
-  static meatList = [];
+  static objectArray = [];
+  static meatArray = [];
   static pudge = null;
   static hook = null;
   static dagger = null;
 
   static castableInputMap = new Map();
   static inputMode = 0;
-  static timerElement = null;
-  static timerValue = 60;
+  static experienceElement = null;
+  static levelElement = null;
   static scoreElement = null;
+  static timerValue = 60;
+  static timerElement = null;
+  static indicators = null;
+  static scoreIndicatorElement = null;
+  static comboIndicatorElement = null;
 
-  static setObjects(pudge, hook, dagger, meatList) {
-    this.objectList = Array.of(pudge, hook, dagger, ...meatList);
+  static initialize({
+      experience, level, score, timer,
+      indicators, scoreIndicator, comboIndicator,
+    }) {
+    this.experienceElement = experience;
+    this.levelElement = level;
+    this.levelElement.innerHTML = 'Lv0';
+    this.scoreElement = score;
+    this.scoreElement.innerHTML = 0;
+    this.timerElement = timer;
+    this.timerElement.innerHTML = 0;
+    this.indicators = indicators;
+    this.scoreIndicatorElement = scoreIndicator;
+    this.comboIndicatorElement = comboIndicator;
+    return;
+  }
+
+  static setObjects({ pudge, hook, dagger, meatArray }) {
+    this.objectArray = Array.of(pudge, hook, dagger, ...meatArray);
     this.pudge = pudge;
     this.hook = hook;
     this.dagger = dagger;
-    this.meatList = meatList;
+    this.meatArray = meatArray;
     this.castableInputMap.set(InputMode.Hook, hook);
     this.castableInputMap.set(InputMode.Dagger, dagger);
     return;
   }
 
-  static reset(timer, score) {
-    this.timerElement = timer;
-    this.timerElement.innerHTML = 0;
-    this.scoreElement = score;
-    this.scoreElement.innerHTML = 0;
+  static emitIndicators(x, y, score, combo) {
+    this.scoreIndicatorElement.innerHTML = `+${score}`;
+    this.comboIndicatorElement.innerHTML = `#${combo}`;
+    Object.assign(this.indicators.style, {
+      'left': `${x.toFixed(0)}px`,
+      'top': `${y.toFixed(0)}px`,
+      'animationName': 'none',
+    });
+    const rect = this.indicators.getBoundingClientRect();
+    const dx = Math.min(Config.x - rect.right, 0) - Math.min(rect.left, 0);
+    const dy = Math.min(Config.y - rect.bottom, 0) - Math.min(rect.top, 0);
+    Object.assign(this.indicators.style, {
+      'left': `${(x + dx).toFixed(0)}px`,
+      'top': `${(y + dy).toFixed(0)}px`,
+      'animationName': 'indicatorAnimation',
+    });
+    return;
   }
 
   static updateModels = () => {
     if (!Clock.running) {
       return;
     }
-    let previousTime = Clock.now * 0.001;
-    let latestTime = Clock.update() * 0.001;
-    let elapse = latestTime - previousTime;
-    this.timerValue -= elapse;
-    let victim = this.hook.tryAttack(this.meatList);
+    let victim = this.hook.tryAttack(this.meatArray);
     if (victim != null) {
-      console.log('!');
-      let rawScore = victim.currentSpeed * (Clock.now - this.hook.skillStart);
-      Config.gainScore(Math.sqrt(rawScore));
+      const combo = this.hook.streak;
+      const score = Config.gainScore(victim.currentSpeed, combo);
+      console.log(victim.currentSpeed.toFixed(2), combo, score);
+      this.emitIndicators(victim.x, victim.y, score, combo);
+      const expValue = Math.round(Config.expValue * 1000);
+      const expAttribute = `${expValue} ${1000 - expValue}`;
+      this.experienceElement.setAttribute('stroke-dasharray', expAttribute);
+      this.levelElement.innerHTML = Config.current.displayLevelText;
+      this.scoreElement.innerHTML = Config.currentScore.toString();
     }
-    // gacha.html("+" + tmp).css({ left: (px - 64), top: (py - 36), opacity: .4 }).animate({ top: "-=49px", opacity: 0 }, 480, "linear");
-    this.objectList.forEach(o => o.updateModel(elapse));
+    const previousUpdate = Clock.now;
+    const elapse = (Clock.update() - previousUpdate) * 0.001;
+    this.objectArray.forEach(o => o.updateModel(elapse));
+    this.timerValue -= elapse;
     return;
   }
 
   static updateViews = () => {
-    this.objectList.forEach(o => o.updateView());
-    this.timerElement.innerHTML = this.timerValue.toFixed(0);
-    this.scoreElement.innerHTML = Config.currentScore.toFixed(0);
+    if (Clock.running) {
+      this.timerElement.innerHTML = this.timerValue.toFixed(0);
+      this.objectArray.forEach(o => o.updateView());
+    }
     window.requestAnimationFrame(this.updateViews);
     return;
   }
@@ -667,11 +732,7 @@ window.onmousedown = function (event) {
 window.onkeydown = function (event) {
   switch (event.which) {
     case 27:  // Escape
-      // document.title = Controller.switchMode() ? '[Running]' : '[Paused]';
-      if (Clock.running ^= true)
-        Clock.play();
-      else
-        Clock.stop();
+      Clock.toggle();
       break;
     case 32:  // Space
       Controller.setInputMode(InputMode.Dagger);
@@ -688,33 +749,29 @@ window.onkeydown = function (event) {
 
 window.onload = function () {
   Config.reset(window.innerWidth, window.innerHeight);
+  const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
 
-  const canvas = document.querySelector("#canvas");
-  let dagger = new Dagger(canvas);
-  let hook = new Hook();
-  let pudge = new Pudge(20, hook, dagger);
-  let meatList = []
-  for (let i = 0; i < 10; ++i) {
-    let meat = new Meat(24);
-    meat.randomizePosition();
-    meatList.push(meat);
-  }
+  const dagger = new Dagger(document.querySelector("#dagger"));
+  const hook = new Hook(document.createElementNS(SVG_NAMESPACE_URI, 'line'));
+  const pudge = new Pudge(document.createElementNS(SVG_NAMESPACE_URI, 'circle'));
+  pudge.addCastable(hook, dagger);
 
-  const svg = document.querySelector("#svg");
-  svg.appendChild(hook.aniElem);
-  svg.appendChild(pudge.aniElem);
-  meatList.forEach(m => svg.appendChild(m.aniElem));
+  const buildMeat = () => new Meat(document.createElementNS(SVG_NAMESPACE_URI, 'circle'));
+  const meatArray = Array.from({ 'length': Config.MeatAmount }, buildMeat);
+  meatArray.forEach(meat => meat.randomizePosition());
 
-  Controller.setObjects(pudge, hook, dagger, meatList);
-  const timer = document.querySelector("#timer");
-  const score = document.querySelector("#score");
-  Controller.reset(timer, score);
+  document.querySelector("#battleField")
+          .append(hook.aniElem, pudge.aniElem, ...meatArray.map(meat => meat.aniElem));
 
-  window.setInterval(Controller.updateModels, 10);
+  const elementIdArray = [
+    'experience', 'level', 'score', 'timer',
+    'indicators', 'scoreIndicator', 'comboIndicator',
+  ];
+  const elementEntries = elementIdArray.map(id => [id, document.querySelector(`#${id}`)]);
+  Controller.initialize(Object.fromEntries(elementEntries));
+  Controller.setObjects({ pudge, hook, dagger, meatArray });
+
+  window.setInterval(Controller.updateModels, Config.ModelUpdatePeriod);
   Controller.updateViews();
-  console.log('Oops');
   return;
 };
-
-// var best = Math.max(vScore, localStorage.hook ? Number(localStorage.hook) : 0);
-// localStorage.hook = best;

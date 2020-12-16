@@ -2,73 +2,116 @@
 <html>
 
 <head>
-	<meta charset="utf-8" />
-	<title>Pudge's HOOK</title>
-	<style>
-		html, body {
-			height: 100%;
-		}
+  <meta charset="utf-8" />
+  <title>Pudge's HOOK</title>
+  <style>
+    html, body {
+      height: 100%;
+    }
 
-		body {
-			margin: 0;
-			overflow: hidden;
-			user-select: none;
-		}
+    body {
+      margin: 0;
+      overflow: hidden;
+      user-select: none;
+    }
 
-		.layer {
-			left: 0;
-			top: 0;
-			height: 100%;
-			width: 100%;
-		}
+    .layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 100%;
+    }
 
-		#svg {
-			/* background-color: yellow; */
-			height: 100%;
-			width: 100%;
-		}
+    #battleField {
+      height: 100%;
+      width: 100%;
+    }
 
-		#canvas {
-			background-image: url('blink.png');
-			background-repeat: no-repeat;
-			background-size: 0px 0px;
-		}
+    #battleField circle {
+      opacity: 0.5;
+    }
 
-		#score {
-			position: absolute;
-			top: 0;
-			right: 1vw;
-			font-size: 64px;
-			color: orange;
-		}
+    #dagger {
+      background-image: url('blink.png');
+      background-repeat: no-repeat;
+      background-size: 0px 0px;
+    }
 
-		#timer {
-			position: absolute;
-			bottom: 2px;
-			right: 1vw;
-			font-size: 128px;
-			font-family: Verdana, sans-serif;
-			color: lightskyblue;
-		}
+    #dashboard {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
 
-	</style>
+    #level {
+      font-size: 24px;
+      font-family: Verdana, sans-serif;
+      fill: orange;
+    }
+
+    #score {
+      font-size: 52px;
+      font-family: cursive, Georgia, Times, serif;
+      fill: chocolate;
+    }
+
+    #timer {
+      position: absolute;
+      bottom: 2px;
+      right: 1vw;
+      font-size: 96px;
+      font-family: Arial, Helvetica, sans-serif;
+      color: lightskyblue;
+      opacity: 0.5;
+    }
+
+    #indicators {
+      position: absolute;
+      opacity: 0;
+      white-space: nowrap;
+      font-size: 28px;
+      font-family: cursive, Georgia, Times, serif;
+      transform: translate(-50%, -50%);
+      animation-duration: 400ms;
+      animation-fill-mode: forwards;
+    }
+
+    @keyframes indicatorAnimation {
+      0%  { opacity: 0; font-size: 36px; }
+      1%  { opacity: 1; }
+      10% { opacity: 0.3; }
+      30% { opacity: 1; }
+      50% { opacity: 0.3; }
+      70% { opacity: 1; font-size: 36px; }
+    }
+  </style>
 </head>
 
 <body>
-	<!--
-	<progress value='0' max='1' style="left:0; top:0; width:200px; height:10px; opacity:.7;"></progress>
-	<span id='gacha' style="font-size:72px; color:Crimson; opacity:0;"></span>
-	<span id='combo' class='info' style="top:155px; color:Indigo;">Combo*0</span>
-	-->
-	<div class='layer' style='position: fixed;'>
-		<svg id='svg'></svg>
-	</div>
-	<div class='layer' style='position: absolute; z-index: -1;'>
-		<canvas id='canvas' width='60' height='60'></canvas>
-		<span id='score'>456</span>
-		<div id='timer'>123</div>
-	</div>
-	<script src="hook.js"></script>
+  <div class='layer' style='position: fixed;'>
+    <svg id='battleField'></svg>
+  </div>
+
+  <div class='layer' style='z-index: -1;'>
+    <canvas id='dagger' width='60' height='60'></canvas>
+    <svg id='dashboard' width='100%' height='60'>
+      <circle id='experience' cx='95' cy='30' r='28' fill='transparent' stroke='orange'
+          stroke-width='4' pathLength='1000' stroke-dashoffset='250' stroke-dasharray='0'></circle>
+      <text id='level' x='95' y='30' dominant-baseline='central' text-anchor='middle'
+          textLength='40' lengthAdjust='spacing'></text>
+      <text id='score' x='135' y='30' dominant-baseline='central' text-anchor='start'></text>
+    </svg>
+    <div id='timer'></div>
+    <div id='indicators'>
+      <span id='scoreIndicator' style='color: crimson;'></span>
+      <span id='comboIndicator' style='color: forestgreen;'></span>
+    </div>
+  </div>
+
+  <div class='layer' style='z-index: 1; display: none;'>
+  </div>
+  <script src="hook.js"></script>
 </body>
 
 </html>
