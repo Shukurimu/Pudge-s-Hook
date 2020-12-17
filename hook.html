@@ -56,6 +56,12 @@
       fill: chocolate;
     }
 
+    #boundary{
+      font-size: 20px;
+      font-family: 'Courier New', Courier, monospace;
+      fill: slateblue;
+    }
+
     #timer {
       position: absolute;
       bottom: 2px;
@@ -101,6 +107,7 @@
       <text id='level' x='95' y='30' dominant-baseline='central' text-anchor='middle'
           textLength='40' lengthAdjust='spacing'></text>
       <text id='score' x='135' y='30' dominant-baseline='central' text-anchor='start'></text>
+      <text id='boundary' x='100%' y='0' dominant-baseline='hanging' text-anchor='end'></text>
     </svg>
     <div id='timer'></div>
     <div id='indicators'>

@@ -5,8 +5,8 @@ const InputMode = Object.freeze({ 'Move': 'auto', 'Hook': 'crosshair', 'Dagger':
 class Config {
   // Time-based values are measured in millisecond.
   static ModelUpdatePeriod = 12;
-  static HookProjectileSpeed = 1500;
-  static DaggerMaxDistance = 1200;
+  static HookProjectileSpeed = 1600;
+  static DaggerDistanceRatio = 0.75;
   static DaggerPenaltyRatio = 0.8;
   static DaggerBackswing = 120;
   static DaggerCooldown = 2400;
@@ -17,57 +17,76 @@ class Config {
   static LevelList = [
     {
       'displayLevelText': "Lv1",
-      'scoreThreshold': 1200,
-      'hookCastRange': 600,
+      'scoreThreshold': 3600,
+      'hookDistanceRatio': 0.35,
       'meatSpeedMin': 40,
       'meatSpeedRange': 100,
-      'meatTrendPeriod': 4000,
+      'meatTrendPeriod': 4200,
     },
     {
       'displayLevelText': "Lv2",
-      'scoreThreshold': 3600,
-      'hookCastRange': 750,
-      'meatSpeedMin': 60,
+      'scoreThreshold': 10800,
+      'hookDistanceRatio': 0.50,
+      'meatSpeedMin': 65,
       'meatSpeedRange': 200,
-      'meatTrendPeriod': 3400,
+      'meatTrendPeriod': 3600,
     },
     {
       'displayLevelText': "Lv3",
-      'scoreThreshold': 10800,
-      'hookCastRange': 900,
-      'meatSpeedMin': 80,
+      'scoreThreshold': 32400,
+      'hookDistanceRatio': 0.65,
+      'meatSpeedMin': 90,
       'meatSpeedRange': 300,
-      'meatTrendPeriod': 2800,
+      'meatTrendPeriod': 3000,
     },
     {
       'displayLevelText': "Lv4",
       'scoreThreshold': Infinity,
-      'hookCastRange': 1050,
-      'meatSpeedMin': 100,
+      'hookDistanceRatio': 0.80,
+      'meatSpeedMin': 115,
       'meatSpeedRange': 400,
-      'meatTrendPeriod': 2200,
+      'meatTrendPeriod': 2400,
     },
   ];
   static currentLevel = 0;
   static currentScore = 0;
   static x = 800;
   static y = 600;
+  static diagonal = 1000;
 
   static get current() {
     return this.LevelList[this.currentLevel];
   }
 
-  static reset(boundaryX, boundaryY) {
-    this.currentLevel = 0;
+  static setBoundary(boundaryX, boundaryY) {
     this.x = boundaryX;
     this.y = boundaryY;
-    console.log('boundary', this.x, this.y);
+    this.diagonal = Math.hypot(boundaryX, boundaryY);
+    document.querySelector('#boundary').innerHTML = `${boundaryX}*${boundaryY}`;
     return;
   }
 
-  static gainScore(meatMovementSpeed, hookStreak) {
-    let score = 40 * this.currentLevel + meatMovementSpeed * (0.75 + 0.25 * hookStreak);
-    score = Math.floor(score);
+  static get daggerMaxDistance() {
+    return this.diagonal * this.DaggerDistanceRatio;
+  }
+
+  static get hookCastRange() {
+    return this.diagonal * this.current.hookDistanceRatio;
+  }
+
+  static reset(boundaryX, boundaryY) {
+    this.currentLevel = 0;
+    this.currentScore = 0;
+    this.setBoundary(boundaryX, boundaryY);
+    return;
+  }
+
+  static gainScore(distance, meatMovementSpeed, hookStreak) {
+    const prediction = distance + meatMovementSpeed * (0.7 + 0.3 * hookStreak);
+    const difficulty = Math.cbrt(this.x * this.y);
+    const levelBonus = 50 * this.currentLevel;
+    const score = Math.floor(prediction + difficulty + levelBonus);
+    console.log(~~distance, ~~meatMovementSpeed, hookStreak, score);
     const newScore = this.currentScore += score;
     this.currentLevel = this.LevelList.findIndex(c => c.scoreThreshold >= newScore);
     return score;
@@ -77,12 +96,13 @@ class Config {
     if (this.currentLevel === this.LevelList.length - 1) {
       return 1;
     }
-    const base = this.currentLevel === 0 ? 0 : this.LevelList[this.currentLevel - 1].scoreThreshold;
-    const total = this.LevelList[this.currentLevel].scoreThreshold;
+    const base = this.currentLevel === 0 ? 0
+               : this.LevelList[this.currentLevel - 1].scoreThreshold;
+    const total = this.current.scoreThreshold;
     return (this.currentScore - base) / total;
   }
 
-  get record() {
+  static get record() {
     return Number.parseInt(window.localStorage.getItem('score') ?? '0', 10);
   }
 
@@ -251,12 +271,15 @@ class Dagger extends Castable {
   }
 
   getSrcDestPos(caster, x, y) {
-    let dx = x - caster.x;
-    let dy = y - caster.y;
-    let distance = Math.hypot(dx, dy);
-    let blinkDistance = distance <= Config.DaggerMaxDistance
-      ? distance : (Config.DaggerMaxDistance * Config.DaggerPenaltyRatio);
-    console.log(`Blink ${distance.toFixed(0)} -> ${blinkDistance.toFixed(0)}`);
+    const dx = x - caster.x;
+    const dy = y - caster.y;
+    const distance = Math.hypot(dx, dy);
+    const maxDistance = Config.daggerMaxDistance;
+    const blinkDistance = distance <= maxDistance ? distance
+                        : (maxDistance * Config.DaggerPenaltyRatio);
+    console.log(`Attempt ${distance.toFixed(0)}`,
+                `Max ${maxDistance.toFixed(0)}`,
+                `Final ${blinkDistance.toFixed(0)}`);
 
     let multiplier = distance < 1 ? 1 : Math.min(blinkDistance / distance, 1);
     return [
@@ -325,7 +348,7 @@ class Hook extends Castable {
     let dx = x - caster.x;
     let dy = y - caster.y;
     let distance = Math.hypot(dx, dy);
-    let exceedance = distance - Config.current.hookCastRange;
+    let exceedance = distance - Config.hookCastRange;
     let multiplier = Math.max(exceedance, 0) / distance;
     return [
       getVectorPoint(caster.x, x, multiplier),
@@ -336,7 +359,7 @@ class Hook extends Castable {
   }
 
   cast(caster) {
-    let castRange = Config.current.hookCastRange;
+    let castRange = Config.hookCastRange;
     let halfTime = 1000 * castRange / Config.HookProjectileSpeed;
     this.skillMid = Clock.now + halfTime;
     this.skillEnd = this.backswingEnd = this.skillMid + halfTime;
@@ -464,7 +487,7 @@ class Pudge extends Movable {
   constructor(element) {
     super(Config.PudgeCollisionSize);
     this.aniElem = element;
-    this.aniElem.setAttribute('fill', 'pink');
+    this.aniElem.setAttribute('fill', 'hotpink');
     this.aniElem.setAttribute('r', Config.PudgeCollisionSize);
 
     this.x = this.destX = Config.x * 0.5;
@@ -640,9 +663,9 @@ class Controller {
     }
     let victim = this.hook.tryAttack(this.meatArray);
     if (victim != null) {
+      const distance = Math.hypot(victim.x - this.pudge.x, victim.y - this.pudge.y);
       const combo = this.hook.streak;
-      const score = Config.gainScore(victim.currentSpeed, combo);
-      console.log(victim.currentSpeed.toFixed(2), combo, score);
+      const score = Config.gainScore(distance, victim.currentSpeed, combo);
       this.emitIndicators(victim.x, victim.y, score, combo);
       const expValue = Math.round(Config.expValue * 1000);
       const expAttribute = `${expValue} ${1000 - expValue}`;
@@ -743,6 +766,12 @@ window.onkeydown = function (event) {
     default:
       console.log(event.which);
   }
+  return;
+};
+
+
+window.onresize = function (event) {
+  Config.setBoundary(window.innerWidth, window.innerHeight);
   return;
 };
 
