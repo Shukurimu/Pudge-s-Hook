@@ -1,0 +1,218 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Pudge's HOOK</title>
+  <style>
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    #battleField {
+      height: 100%;
+      width: 100%;
+    }
+
+    #battleField circle {
+      opacity: 0.5;
+    }
+
+    #dagger {
+      background-image: url('./IconDagger.png');
+      background-repeat: no-repeat;
+      background-size: 0px 0px;
+    }
+
+    #dashboard {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+
+    #level {
+      font-size: 24px;
+      font-family: Verdana, sans-serif;
+      fill: orange;
+    }
+
+    #score {
+      font-size: 52px;
+      font-family: cursive, Georgia, Times, serif;
+      fill: chocolate;
+    }
+
+    #boundary{
+      font-size: 20px;
+      font-family: 'Courier New', Courier, monospace;
+      fill: slateblue;
+    }
+
+    #timer {
+      position: absolute;
+      bottom: 2px;
+      right: 1vw;
+      font-size: 96px;
+      font-family: Arial, Helvetica, sans-serif;
+      color: lightskyblue;
+      opacity: 0.5;
+    }
+
+    #indicators {
+      position: absolute;
+      opacity: 0;
+      white-space: nowrap;
+      font-size: 28px;
+      font-family: cursive, Georgia, Times, serif;
+      transform: translate(-50%, -50%);
+      animation-duration: 400ms;
+      animation-fill-mode: forwards;
+    }
+
+    @keyframes indicatorAnimation {
+      0%  { opacity: 0; font-size: 36px; }
+      1%  { opacity: 1; }
+      10% { opacity: 0.3; }
+      30% { opacity: 1; }
+      50% { opacity: 0.3; }
+      70% { opacity: 1; font-size: 36px; }
+    }
+
+    #information {
+      display: grid;
+      display: none;
+      z-index: 1;
+      font-size: 20px;
+      font-family: Verdana, sans-serif;
+      color: white;
+      align-items: center;
+      background-color: black;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(15, 1fr);
+    }
+
+    .meat {
+      color: hotpink;
+    }
+
+    .itemInfo {
+      text-align: center;
+    }
+
+    .itemDescription {
+      text-align: left;
+    }
+
+    kbd {  /* reference from MDN */
+      border: 1px solid #cdd5d7;
+      border-radius: 6px;
+      box-shadow: 0 1px 2px 1px #cdd5d7;
+      font-family: consolas, "Liberation Mono", courier, monospace;
+      font-size: 20px;
+      font-weight: 700;
+      padding: 4px 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class='layer' style='position: fixed;'>
+    <svg id='battleField'></svg>
+  </div>
+
+  <div class='layer' style='z-index: -1;'>
+    <canvas id='dagger' width='60' height='60'></canvas>
+    <svg id='dashboard' width='100%' height='60'>
+      <circle id='experience' cx='95' cy='30' r='28' fill='transparent' stroke='orange'
+          stroke-width='4' pathLength='1000' stroke-dashoffset='250' stroke-dasharray='0'></circle>
+      <text id='level' x='95' y='30' dominant-baseline='central' text-anchor='middle'
+          textLength='40' lengthAdjust='spacing'></text>
+      <text id='score' x='135' y='30' dominant-baseline='central' text-anchor='start'></text>
+      <text id='boundary' x='100%' y='0' dominant-baseline='hanging' text-anchor='end'></text>
+    </svg>
+    <div id='timer'></div>
+    <div id='indicators'>
+      <span id='scoreIndicator' style='color: crimson;'></span>
+      <span id='comboIndicator' style='color: forestgreen;'></span>
+    </div>
+  </div>
+
+  <div class='layer' id='information'>
+    <div style='grid-row: 3; grid-column: 3 / 7;' class='itemInfo'>
+      Pudge's Hook
+    </div>
+
+    <div style='grid-row: 4 / 8; grid-column: 3 / 7;' class='itemInfo'>
+      參考 DOTA 2 英雄的小遊戲，在時限內抓<span class='meat'>⬤</span>，愈多愈好。
+    </div>
+
+    <div style='grid-row: 8; grid-column: 3;' class='itemInfo'>
+      <span style='font-size: 36px; color: hotpink;'>⬤</span>
+    </div>
+    <div style='grid-row: 8; grid-column: 4;' class='itemInfo'>
+      <hr style='width: 20%;' />
+    </div>
+    <div style='grid-row: 8; grid-column: 5 / 8;' class='itemDescription'>
+      分數來源；每隔一段時間隨機改變移動方向和速率
+    </div>
+
+    <div style='grid-row: 9 / 11; grid-column: 3;' class='itemInfo'>
+      <span style='font-size: 36px; color: mediumorchid;'>⬤</span>
+    </div>
+    <div style='grid-row: 9; grid-column: 4;' class='itemInfo'>
+      <kbd>RightClick</kbd>
+    </div>
+    <div style='grid-row: 9; grid-column: 5 / 8;' class='description'>
+      點地板（網頁任意處）移動
+    </div>
+    <div style='grid-row: 10; grid-column: 4;' class='itemInfo'>
+      <kbd>LeftClick</kbd>
+    </div>
+    <div style='grid-row: 10; grid-column: 5 / 8;' class='itemDescription'>
+      按下技能鍵後點擊目標位置施放
+    </div>
+
+    <div style='grid-row: 11; grid-column: 3;' class='itemInfo'>
+      <img src='./IconHook.png' height="80" width="80" alt="Castable:Hook" />
+    </div>
+    <div style='grid-row: 11; grid-column: 4;' class='itemInfo'>
+      <kbd>T</kbd>
+    </div>
+    <div style='grid-row: 11; grid-column: 5 / 8;' class='itemDescription'>
+      向目標位置伸出鈎子、將路徑上第一個接觸到的<span class='meat'>⬤</span>拉回
+    </div>
+
+    <div style='grid-row: 12; grid-column: 3;' class='itemInfo'>
+      <img src='./IconDagger.png' height="80" width="80" alt="Castable:Dagger" />
+    </div>
+    <div style='grid-row: 12; grid-column: 4;' class='itemInfo'>
+      <kbd>SPACE</kbd>
+    </div>
+    <div style='grid-row: 12; grid-column: 5 / 8;' class='itemDescription'>
+      在一定距離內快速移動到目標位置
+    </div>
+
+    <div style='grid-row: 14; grid-column: 4 / 6;'>[No Function]</div>
+  </div>
+
+  <script src="Config.js"></script>
+  <script src="Castable.js"></script>
+  <script src="Movable.js"></script>
+  <script src="Controller.js"></script>
+</body>
+
+</html>
