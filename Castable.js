@@ -160,7 +160,7 @@ class Hook extends Castable {
 
     this.skillStart = 0;
     this.skillMid = 0;
-    this.trialList = [];
+    this.trialArray = [];
   }
 
   getSrcDestPos(caster, x, y) {
@@ -190,7 +190,7 @@ class Hook extends Castable {
     let multiplier = castRange / Math.hypot(dx, dy);
     this.destX = getVectorPoint(this.srcX, this.destX, multiplier);
     this.destY = getVectorPoint(this.srcY, this.destY, multiplier);
-    this.trialList.push(0);
+    this.trialArray.push(0);
     return;
   }
 
@@ -218,18 +218,18 @@ class Hook extends Castable {
     return;
   }
 
-  tryAttack(preyList) {
+  tryAttack(preyArray) {
     if (Clock.now >= this.skillMid) {
       return null;
     }
-    for (let prey of preyList) {
+    for (let prey of preyArray) {
       if (prey.withinRange(this.x, this.y)) {
         this.destX = prey.x;
         this.destY = prey.y;
         this.skillMid = Clock.now;
         this.skillEnd = this.backswingEnd = 2 * this.skillMid - this.skillStart;
         this.linkObject(prey);
-        this.trialList[this.trialList.length - 1] = 1;
+        this.trialArray[this.trialArray.length - 1] = 1;
         return prey;
       }
     }
@@ -237,7 +237,7 @@ class Hook extends Castable {
   }
 
   get streak() {
-    return this.trialList.length - this.trialList.lastIndexOf(0) - 1;
+    return this.trialArray.length - this.trialArray.lastIndexOf(0) - 1;
   }
 
 }

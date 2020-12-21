@@ -70,16 +70,16 @@ class Pudge extends Movable {
 
     this.x = this.destX = Config.x * 0.5;
     this.y = this.destY = Config.y * 0.5;
-    this.castableList = [];
+    this.castableArray = [];
   }
 
   addCastable(...castables) {
-    this.castableList.push(...castables);
+    this.castableArray.push(...castables);
     return;
   }
 
   normalMove(elapse) {
-    if (this.castableList.some(c => c.isCasting())) {
+    if (this.castableArray.some(c => c.isCasting())) {
       return;
     }
     let dx = this.destX - this.x;
@@ -89,7 +89,7 @@ class Pudge extends Movable {
     if (distance <= maxRange) {
       this.x = this.destX;
       this.y = this.destY;
-      this.castableList.forEach(c => c.tryCast(this) && this.stopAction());
+      this.castableArray.forEach(c => c.tryCast(this) && this.stopAction());
     } else {
       let ratio = maxRange / distance;
       this.x += dx * ratio;
@@ -101,19 +101,19 @@ class Pudge extends Movable {
   }
 
   registerMove(x, y) {
-    if (this.castableList.some(c => c.isCasting())) {
+    if (this.castableArray.some(c => c.isCasting())) {
       return;
     }
     this.destX = x;
     this.destY = y;
-    this.castableList.forEach(c => c.unregister());
+    this.castableArray.forEach(c => c.unregister());
     return;
   }
 
   stopAction() {
     this.destX = this.x;
     this.destY = this.y;
-    this.castableList.forEach(c => c.unregister());
+    this.castableArray.forEach(c => c.unregister());
     return;
   }
 

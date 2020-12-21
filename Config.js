@@ -5,45 +5,45 @@ class Config {
   // Time-based values are measured in millisecond.
   static ModelUpdatePeriod = 12;
   static HookProjectileSpeed = 1600;
-  static DaggerDistanceRatio = 0.75;
+  static DaggerDistanceRatio = 0.70;
   static DaggerPenaltyRatio = 0.8;
   static DaggerBackswing = 120;
   static DaggerCooldown = 2400;
   static PudgeMovementSpeed = 300;
-  static PudgeCollisionSize = 20;
-  static MeatCollisionSize = 24;
+  static PudgeCollisionSize = 24;
+  static MeatCollisionSize = 28;
   static MeatAmount = 10;
-  static LevelList = [
+  static LevelArray = [
     {
       'displayLevelText': "Lv1",
-      'scoreThreshold': 3600,
-      'hookDistanceRatio': 0.35,
+      'scoreThreshold': 6000,
+      'hookDistanceRatio': 0.36,
       'meatSpeedMin': 40,
       'meatSpeedRange': 100,
       'meatTrendPeriod': 4200,
     },
     {
       'displayLevelText': "Lv2",
-      'scoreThreshold': 10800,
-      'hookDistanceRatio': 0.50,
-      'meatSpeedMin': 65,
-      'meatSpeedRange': 200,
+      'scoreThreshold': 15000,
+      'hookDistanceRatio': 0.48,
+      'meatSpeedMin': 55,
+      'meatSpeedRange': 175,
       'meatTrendPeriod': 3600,
     },
     {
       'displayLevelText': "Lv3",
-      'scoreThreshold': 32400,
-      'hookDistanceRatio': 0.65,
-      'meatSpeedMin': 90,
-      'meatSpeedRange': 300,
+      'scoreThreshold': 37500,
+      'hookDistanceRatio': 0.60,
+      'meatSpeedMin': 70,
+      'meatSpeedRange': 250,
       'meatTrendPeriod': 3000,
     },
     {
       'displayLevelText': "Lv4",
       'scoreThreshold': Infinity,
-      'hookDistanceRatio': 0.80,
-      'meatSpeedMin': 115,
-      'meatSpeedRange': 400,
+      'hookDistanceRatio': 0.72,
+      'meatSpeedMin': 85,
+      'meatSpeedRange': 325,
       'meatTrendPeriod': 2400,
     },
   ];
@@ -54,14 +54,14 @@ class Config {
   static diagonal = 1000;
 
   static get current() {
-    return this.LevelList[this.currentLevel];
+    return this.LevelArray[this.currentLevel];
   }
 
   static setBoundary(boundaryX, boundaryY) {
     this.x = boundaryX;
     this.y = boundaryY;
     this.diagonal = Math.hypot(boundaryX, boundaryY);
-    document.querySelector('#boundary').innerHTML = `${boundaryX}*${boundaryY}`;
+    document.querySelector('#boundary').textContent = `${boundaryX}*${boundaryY}`;
     return;
   }
 
@@ -81,28 +81,35 @@ class Config {
   }
 
   static gainScore(distance, meatMovementSpeed, hookStreak) {
-    const prediction = distance + meatMovementSpeed * (0.7 + 0.3 * hookStreak);
+    const prediction = distance * 1.6 + meatMovementSpeed * (0.8 + 0.2 * hookStreak);
     const difficulty = Math.cbrt(this.x * this.y);
     const levelBonus = 50 * this.currentLevel;
     const score = Math.floor(prediction + difficulty + levelBonus);
     console.log(~~distance, ~~meatMovementSpeed, hookStreak, score);
     const newScore = this.currentScore += score;
-    this.currentLevel = this.LevelList.findIndex(c => c.scoreThreshold >= newScore);
+    this.currentLevel = this.LevelArray.findIndex(c => c.scoreThreshold >= newScore);
     return score;
   }
 
   static get expValue() {
-    if (this.currentLevel === this.LevelList.length - 1) {
+    if (this.currentLevel === this.LevelArray.length - 1) {
       return 1;
     }
     const base = this.currentLevel === 0 ? 0
-               : this.LevelList[this.currentLevel - 1].scoreThreshold;
+               : this.LevelArray[this.currentLevel - 1].scoreThreshold;
     const total = this.current.scoreThreshold;
     return (this.currentScore - base) / total;
   }
 
-  static get record() {
-    return Number.parseInt(window.localStorage.getItem('score') ?? '0', 10);
+  static updateAndGetRecord() {
+    const storageId = 'score.v2';
+    let bestRecord = Number.parseInt(window.localStorage.getItem(storageId) ?? '0', 10);
+    let currentScore = Math.round(this.currentScore);
+    if (bestRecord < currentScore) {
+      bestRecord = currentScore;
+      window.localStorage.setItem(storageId, currentScore.toString());
+    }
+    return [bestRecord, currentScore];
   }
 
 }
@@ -133,8 +140,8 @@ class Clock {
     return;
   }
 
-  static toggle() {
-    if (this.running ^= true) {
+  static setRunning(willBeRunning) {
+    if (this.running = willBeRunning) {
       this.play();
     } else {
       this.stop();
@@ -181,6 +188,19 @@ function getVectorPoint(vectorFrom, vectorTo, multiplier) {
   return vectorFrom + (vectorTo - vectorFrom) * multiplier;
 }
 
+
+function computeMaxStreak(arr) {
+  return arr.reduce((accumulator, currentValue) => {
+    if (currentValue) {
+      accumulator.max = Math.max(accumulator.max, ++accumulator.current);
+    } else {
+      accumulator.current = 0;
+    }
+    return accumulator;
+  }, { 'max': 0, 'current': 0 }).max;
+}
+
+
 const InputMode = Object.freeze({ 'Move': 'auto', 'Hook': 'crosshair', 'Dagger': 'cell' });
 
-// export { Config, Clock, AbstractObject, getVectorPoint, InputMode };
+// export { Config, Clock, AbstractObject, getVectorPoint, computeMaxStreak, InputMode };

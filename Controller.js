@@ -1,5 +1,5 @@
 'use strict';
-// import { Config, Clock, InputMode } from './Config.js';
+// import { Config, Clock, computeMaxStreak, InputMode } from './Config.js';
 // import { Dagger, Hook } from './Castable.js';
 // import { Pudge, Meat } from './Movable.js';
 
@@ -12,11 +12,11 @@ class Controller {
   static dagger = null;
 
   static castableInputMap = new Map();
-  static inputMode = 0;
+  static inputMode = null;
   static experienceElement = null;
   static levelElement = null;
   static scoreElement = null;
-  static timerValue = 60;
+  static timerValue = 0;
   static timerElement = null;
   static indicators = null;
   static scoreIndicatorElement = null;
@@ -28,14 +28,16 @@ class Controller {
     }) {
     this.experienceElement = experience;
     this.levelElement = level;
-    this.levelElement.innerHTML = 'Lv0';
+    this.levelElement.textContent = 'Lv0';
     this.scoreElement = score;
-    this.scoreElement.innerHTML = 0;
+    this.scoreElement.textContent = 0;
     this.timerElement = timer;
-    this.timerElement.innerHTML = 0;
+    this.timerElement.textContent = 0;
     this.indicators = indicators;
     this.scoreIndicatorElement = scoreIndicator;
     this.comboIndicatorElement = comboIndicator;
+    this.inputMode = InputMode.Move;
+    this.timerValue = 60;
     return;
   }
 
@@ -51,8 +53,8 @@ class Controller {
   }
 
   static emitIndicators(x, y, score, combo) {
-    this.scoreIndicatorElement.innerHTML = `+${score}`;
-    this.comboIndicatorElement.innerHTML = `#${combo}`;
+    this.scoreIndicatorElement.textContent = `+${score}`;
+    this.comboIndicatorElement.textContent = `#${combo}`;
     Object.assign(this.indicators.style, {
       'left': `${x.toFixed(0)}px`,
       'top': `${y.toFixed(0)}px`,
@@ -82,19 +84,21 @@ class Controller {
       const expValue = Math.round(Config.expValue * 1000);
       const expAttribute = `${expValue} ${1000 - expValue}`;
       this.experienceElement.setAttribute('stroke-dasharray', expAttribute);
-      this.levelElement.innerHTML = Config.current.displayLevelText;
-      this.scoreElement.innerHTML = Config.currentScore.toString();
+      this.levelElement.textContent = Config.current.displayLevelText;
+      this.scoreElement.textContent = Config.currentScore.toString();
     }
     const previousUpdate = Clock.now;
     const elapse = (Clock.update() - previousUpdate) * 0.001;
     this.objectArray.forEach(o => o.updateModel(elapse));
-    this.timerValue -= elapse;
+    if ((this.timerValue -= elapse) < 0) {
+      gameOver(this.hook.trialArray);
+    }
     return;
   }
 
   static updateViews = () => {
     if (Clock.running) {
-      this.timerElement.innerHTML = this.timerValue.toFixed(0);
+      this.timerElement.textContent = this.timerValue.toFixed(0);
       this.objectArray.forEach(o => o.updateView());
     }
     window.requestAnimationFrame(this.updateViews);
@@ -164,13 +168,13 @@ window.onmousedown = function (event) {
 };
 
 
-window.onkeydown = function (event) {
+const gameKeyListener = function (event) {
   if (event.key === 'Tab') {
     event.preventDefault();
   }
   switch (event.key.toUpperCase()) {
     case "ESCAPE":
-      Clock.toggle();
+      Clock.setRunning(!Clock.running);
       break;
     case " ":
       Controller.setInputMode(InputMode.Dagger);
@@ -192,6 +196,14 @@ window.onresize = function (event) {
 
 
 window.onload = function () {
+  window.setInterval(Controller.updateModels, Config.ModelUpdatePeriod);
+  Controller.updateViews();
+  return;
+};
+
+
+const gameStart = function () {
+  console.log('Game Start !');
   Config.reset(window.innerWidth, window.innerHeight);
   const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
 
@@ -204,8 +216,9 @@ window.onload = function () {
   const meatArray = Array.from({ 'length': Config.MeatAmount }, buildMeat);
   meatArray.forEach(meat => meat.randomizePosition());
 
-  document.querySelector("#battleField")
-          .append(hook.aniElem, pudge.aniElem, ...meatArray.map(meat => meat.aniElem));
+  const battleField = document.querySelector("#battleField");
+  battleField.replaceChildren();
+  battleField.append(hook.aniElem, pudge.aniElem, ...meatArray.map(meat => meat.aniElem));
 
   const elementIdArray = [
     'experience', 'level', 'score', 'timer',
@@ -214,8 +227,30 @@ window.onload = function () {
   const elementEntries = elementIdArray.map(id => [id, document.querySelector(`#${id}`)]);
   Controller.initialize(Object.fromEntries(elementEntries));
   Controller.setObjects({ pudge, hook, dagger, meatArray });
-
-  window.setInterval(Controller.updateModels, Config.ModelUpdatePeriod);
-  Controller.updateViews();
+  Clock.setRunning(true);
+  window.onkeydown = gameKeyListener;
+  document.querySelector('#information').style.display = 'none';
   return;
-};
+}
+
+
+const gameOver = function (hookTrialArray) {
+  console.log('Game Over !');
+  Clock.setRunning(false);
+  window.onkeydown = null;
+  const [bestRecord, currentScore] = Config.updateAndGetRecord();
+  const difference = bestRecord - currentScore;
+  const successCount = hookTrialArray.reduce((accu, value) => accu + value, 0);
+  const accuracy = Math.round(100 * successCount / Math.max(hookTrialArray.length, 1));
+  const maxStreak = computeMaxStreak(hookTrialArray);
+  document.querySelector('#message').innerHTML = [
+    "~ 遊戲結束 ~",
+    `本次分數 ${currentScore} / 歷史最高分數 <abbr title='差距 ${difference}'>${bestRecord}</abbr>`,
+    `[肉鉤] 使用次數 ${hookTrialArray.length} 命中率 ${accuracy}% 最高連擊 ${maxStreak}`,
+  ].join('<br />');
+  document.querySelector('#information').style.display = 'grid';
+  return;
+}
+
+
+document.querySelector('#button').onclick = () => gameStart();
