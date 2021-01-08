@@ -1,5 +1,6 @@
-'use strict';
-// import { Config, Clock, AbstractObject, getVectorPoint } from './Config.js';
+import { AbstractObject, getVectorPoint } from './Util';
+import { Clock } from './Stopwatch';
+import { Config } from './Config';
 
 
 class Castable extends AbstractObject {
@@ -74,11 +75,11 @@ class Castable extends AbstractObject {
 }
 
 
-class Dagger extends Castable {
-  static END_ANGLE = Math.PI * 1.5;
+export class Dagger extends Castable {
 
   constructor(canvas) {
     super(true);
+    this.END_ANGLE = Math.PI * 1.5;
     this.context2d = canvas.getContext("2d");
     this.context2d.fillStyle = 'rgba(0, 0, 0, 0.6)';
     this.canvasMidX = canvas.width * 0.5;
@@ -95,10 +96,11 @@ class Dagger extends Castable {
     const distance = Math.hypot(dx, dy);
     const maxDistance = Config.daggerMaxDistance;
     const blinkDistance = distance <= maxDistance ? distance
-                        : (maxDistance * Config.DaggerPenaltyRatio);
+      : (maxDistance * Config.daggerPenaltyRatio);
     console.log(`Attempt ${distance.toFixed(0)}`,
-                `Max ${maxDistance.toFixed(0)}`,
-                `Final ${blinkDistance.toFixed(0)}`);
+      `Max ${maxDistance.toFixed(0)}`,
+      `Final ${blinkDistance.toFixed(0)}`,
+    );
 
     let multiplier = distance < 1 ? 1 : Math.min(blinkDistance / distance, 1);
     return [
@@ -110,8 +112,8 @@ class Dagger extends Castable {
   }
 
   cast(caster) {
-    this.backswingEnd = Clock.now + Config.DaggerBackswing;
-    this.skillEnd = Clock.now + Config.DaggerCooldown;
+    this.backswingEnd = Clock.now + Config.daggerBackswing;
+    this.skillEnd = Clock.now + Config.daggerCooldown;
     this.blinkFinished = false;
     this.linkObject(caster);
     return;
@@ -123,7 +125,7 @@ class Dagger extends Castable {
       return;
     }
     let remain = this.backswingEnd - Clock.now;
-    let multiplier = Math.max(remain, 0) / Config.DaggerBackswing;
+    let multiplier = Math.max(remain, 0) / Config.daggerBackswing;
     this.x = getVectorPoint(this.destX, this.srcX, multiplier);
     this.y = getVectorPoint(this.destY, this.srcY, multiplier);
     this.blinkFinished = remain < 0;
@@ -135,12 +137,12 @@ class Dagger extends Castable {
     if (this.isReady()) {
       return;
     }
-    let multiplier = 1 - (this.skillEnd - Clock.now) / Config.DaggerCooldown;
+    let multiplier = 1 - (this.skillEnd - Clock.now) / Config.daggerCooldown;
     this.context2d.beginPath();
     this.context2d.moveTo(this.canvasMidX, this.canvasMidY);
     this.context2d.arc(
       this.canvasMidX, this.canvasMidY, this.canvasSpan,
-      Math.PI * (2 * multiplier - 0.5), Dagger.END_ANGLE,
+      Math.PI * (2 * multiplier - 0.5), this.END_ANGLE,
       // The angle at which the arc starts / ends in radians, measured from the positive x-axis.
     );
     this.context2d.fill();
@@ -150,12 +152,12 @@ class Dagger extends Castable {
 }
 
 
-class Hook extends Castable {
+export class Hook extends Castable {
 
   constructor(element) {
     super(false);
     this.aniElem = element;
-    this.aniElem.setAttribute('stroke', 'brown');
+    this.aniElem.setAttribute('stroke', 'coral');
     this.aniElem.setAttribute('stroke-width', 5);
 
     this.skillStart = 0;
@@ -179,7 +181,7 @@ class Hook extends Castable {
 
   cast(caster) {
     let castRange = Config.hookCastRange;
-    let halfTime = 1000 * castRange / Config.HookProjectileSpeed;
+    let halfTime = 1000 * castRange / Config.hookProjectileSpeed;
     this.skillMid = Clock.now + halfTime;
     this.skillEnd = this.backswingEnd = this.skillMid + halfTime;
     this.skillStart = Clock.now;
@@ -241,5 +243,3 @@ class Hook extends Castable {
   }
 
 }
-
-// export { Dagger, Hook };

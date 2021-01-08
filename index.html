@@ -145,12 +145,12 @@
 
 <body>
   <div class='layer' style='position: fixed;'>
-    <svg id='battleField'></svg>
+    <svg id='battleField' xmlns="http://www.w3.org/2000/svg"></svg>
   </div>
 
   <div class='layer' style='z-index: -1; background-color: black;'>
     <canvas id='dagger' width='60' height='60'></canvas>
-    <svg id='dashboard' width='100%' height='60'>
+    <svg id='dashboard' width='100%' height='60' xmlns="http://www.w3.org/2000/svg">
       <circle id='experience' cx='95' cy='30' r='28' fill='transparent' stroke='orange'
           stroke-width='4' pathLength='1000' stroke-dashoffset='250' stroke-dasharray='0'></circle>
       <text id='level' x='95' y='30' dominant-baseline='central' text-anchor='middle'
@@ -237,10 +237,7 @@
     const blockOpener = { 'target': '_blank', 'rel': 'noreferrer noopener' };
     document.querySelectorAll('a').forEach(e => Object.assign(e, blockOpener));
   </script>
-  <script src="Config.js"></script>
-  <script src="Castable.js"></script>
-  <script src="Movable.js"></script>
-  <script src="Controller.js"></script>
+  <script src="./script.js"></script>
 </body>
 
 </html>

@@ -1,5 +1,6 @@
-'use strict';
-// import { Config, Clock, AbstractObject } from './Config.js';
+import { AbstractObject } from './Util';
+import { Clock } from './Stopwatch';
+import { Config } from './Config';
 
 
 class Movable extends AbstractObject {
@@ -60,13 +61,13 @@ class Movable extends AbstractObject {
 }
 
 
-class Pudge extends Movable {
+export class Pudge extends Movable {
 
   constructor(element) {
-    super(Config.PudgeCollisionSize);
+    super(Config.pudgeCollisionSize);
     this.aniElem = element;
     this.aniElem.setAttribute('fill', 'orchid');
-    this.aniElem.setAttribute('r', Config.PudgeCollisionSize);
+    this.aniElem.setAttribute('r', Config.pudgeCollisionSize);
 
     this.x = this.destX = Config.x * 0.5;
     this.y = this.destY = Config.y * 0.5;
@@ -85,7 +86,7 @@ class Pudge extends Movable {
     let dx = this.destX - this.x;
     let dy = this.destY - this.y;
     let distance = Math.hypot(dx, dy);
-    let maxRange = Config.PudgeMovementSpeed * elapse;
+    let maxRange = Config.pudgeMovementSpeed * elapse;
     if (distance <= maxRange) {
       this.x = this.destX;
       this.y = this.destY;
@@ -120,13 +121,13 @@ class Pudge extends Movable {
 }
 
 
-class Meat extends Movable {
+export class Meat extends Movable {
 
   constructor(element) {
-    super(Config.MeatCollisionSize);
+    super(Config.meatCollisionSize);
     this.aniElem = element;
     this.aniElem.setAttribute('fill', 'pink');
-    this.aniElem.setAttribute('r', Config.MeatCollisionSize);
+    this.aniElem.setAttribute('r', Config.meatCollisionSize);
 
     this.deltaX = 0;
     this.deltaY = 0;
@@ -142,12 +143,11 @@ class Meat extends Movable {
   }
 
   randomizeMovement() {
-    let setting = Config.current;
     let radians = Math.PI * 2 * Math.random();
-    this.currentSpeed = setting.meatSpeedMin + Math.random() * setting.meatSpeedRange;
+    this.currentSpeed = Config.meatSpeedMin + Math.random() * Config.meatSpeedRange;
     this.deltaX = this.currentSpeed * Math.cos(radians);
     this.deltaY = this.currentSpeed * Math.sin(radians);
-    this.trendSpan = (Math.random() * 0.5 + 0.5) * setting.meatTrendPeriod;
+    this.trendSpan = (Math.random() * 0.5 + 0.5) * Config.meatTrendPeriod;
     this.trendEnd = Clock.now + this.trendSpan;
     return;
   }
@@ -168,5 +168,3 @@ class Meat extends Movable {
   }
 
 }
-
-// export { Pudge, Meat };

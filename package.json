@@ -1,0 +1,27 @@
+{
+  "name": "pudge-s-hook",
+  "version": "2.0.0",
+  "description": "",
+  "main": "index.html",
+  "scripts": {
+    "dev": "parcel index.html",
+    "build": "rm -rf dist && parcel build --no-source-maps index.html",
+    "buildmap": "rm -rf dist && parcel build index.html",
+    "serve": "npx serve dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shukurimu/Pudge-s-Hook.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Shukurimu/Pudge-s-Hook/issues"
+  },
+  "homepage": "https://github.com/Shukurimu/Pudge-s-Hook#readme",
+  "devDependencies": {
+    "cssnano": "^4.1.10",
+    "eslint": "^7.17.0"
+  }
+}
