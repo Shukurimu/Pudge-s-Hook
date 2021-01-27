@@ -79,6 +79,7 @@ class LifeConfig extends ConstantConfig {
 
   constructor() {
     super();
+    this.boundarySetter = undefined;
     this.currentLevel = 0;
     this.currentScore = 0;
     this.x = 800;
@@ -110,6 +111,7 @@ class LifeConfig extends ConstantConfig {
     this.x = boundaryX;
     this.y = boundaryY;
     this.diagonal = Math.hypot(boundaryX, boundaryY);
+    this.boundarySetter(boundaryX, boundaryY);
     return;
   }
 
@@ -121,10 +123,10 @@ class LifeConfig extends ConstantConfig {
     return this.diagonal * this.current.get(KEY_HOOK_DISTANCE_RATIO);
   }
 
-  reset(boundaryX, boundaryY) {
+  reset(boundarySetter) {
+    this.boundarySetter = boundarySetter;
     this.currentLevel = 0;
     this.currentScore = 0;
-    this.setBoundary(boundaryX, boundaryY);
     return;
   }
 

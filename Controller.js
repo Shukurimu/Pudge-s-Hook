@@ -4,7 +4,8 @@ import { Config, InputMode } from './Config';
 
 export class Controller {
 
-  constructor() {
+  constructor(cursorSetter) {
+    this.cursorSetter = cursorSetter;
     this.objectArray = [];
     this.meatArray = [];
     this.pudge = null;
@@ -23,10 +24,11 @@ export class Controller {
     this.comboIndicatorElement = null;
   }
 
-  initialize({
+  initialize(timerValue, {
     experience, level, score, timer,
     indicators, scoreIndicator, comboIndicator,
   }) {
+    this.timerValue = timerValue;
     this.experienceElement = experience;
     this.levelElement = level;
     this.levelElement.textContent = 'Lv0';
@@ -38,7 +40,6 @@ export class Controller {
     this.scoreIndicatorElement = scoreIndicator;
     this.comboIndicatorElement = comboIndicator;
     this.inputMode = InputMode.Move;
-    this.timerValue = 60;
     return;
   }
 
@@ -107,7 +108,7 @@ export class Controller {
       return;
     }
     this.pudge.registerMove(x, y);
-    document.body.style.cursor = InputMode.Move;
+    this.cursorSetter(InputMode.Move);
     return;
   }
 
@@ -116,10 +117,9 @@ export class Controller {
       return;
     }
     if (this.castableInputMap.get(inputMode).isReady()) {
-      this.inputMode = inputMode;
-      document.body.style.cursor = inputMode;
+      this.cursorSetter(this.inputMode = inputMode);
     } else {
-      document.body.style.cursor = InputMode.Move;
+      this.cursorSetter(InputMode.Move);
     }
     return;
   }
@@ -136,7 +136,7 @@ export class Controller {
         this.dagger.register(this.pudge, x, y);
         break;
     }
-    document.body.style.cursor = this.inputMode = InputMode.Move;
+    this.cursorSetter(this.inputMode = InputMode.Move);
     return;
   }
 

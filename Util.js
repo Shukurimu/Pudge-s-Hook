@@ -15,6 +15,13 @@ export function computeMaxStreak(arr) {
   }, { 'max': 0, 'current': 0 }).max;
 }
 
+export function setDomAttributes(domElement, attributes) {
+  for (const [attr, value] of Object.entries(attributes)) {
+    domElement.setAttribute(attr, value);
+  }
+  return;
+}
+
 export class AbstractObject {
 
   constructor() {

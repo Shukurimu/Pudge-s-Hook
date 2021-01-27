@@ -144,26 +144,8 @@
 </head>
 
 <body>
-  <div class='layer' style='position: fixed;'>
-    <svg id='battleField' xmlns="http://www.w3.org/2000/svg"></svg>
-  </div>
-
-  <div class='layer' style='z-index: -1; background-color: black;'>
-    <canvas id='dagger' width='60' height='60'></canvas>
-    <svg id='dashboard' width='100%' height='60' xmlns="http://www.w3.org/2000/svg">
-      <circle id='experience' cx='95' cy='30' r='28' fill='transparent' stroke='orange'
-          stroke-width='4' pathLength='1000' stroke-dashoffset='250' stroke-dasharray='0'></circle>
-      <text id='level' x='95' y='30' dominant-baseline='central' text-anchor='middle'
-          textLength='40' lengthAdjust='spacing'></text>
-      <text id='score' x='135' y='30' dominant-baseline='central' text-anchor='start'></text>
-      <text id='boundary' x='100%' y='0' dominant-baseline='hanging' text-anchor='end'></text>
-    </svg>
-    <div id='timer'></div>
-    <div id='indicators'>
-      <span id='scoreIndicator' style='color: tomato;'></span>
-      <span id='comboIndicator' style='color: springgreen;'></span>
-    </div>
-  </div>
+  <div id='battleFieldLayer' class='layer' style='position: fixed;'></div>
+  <div id='screenLayer' class='layer' style='z-index: -1; background-color: black;'></div>
 
   <div class='layer' id='information'>
     <div style='grid-row: 2; grid-column: 1 / -1;' class='itemInfo'>

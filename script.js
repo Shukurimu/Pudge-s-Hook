@@ -1,4 +1,4 @@
-import { SVG_NAMESPACE_URI, computeMaxStreak } from './Util';
+import { SVG_NAMESPACE_URI, computeMaxStreak, setDomAttributes } from './Util';
 import { Clock } from './Stopwatch';
 import { Config, InputMode } from './Config';
 import { Dagger, Hook } from './Castable';
@@ -6,25 +6,21 @@ import { Pudge, Meat } from './Movable';
 import { Controller } from './Controller';
 
 
-const controller = new Controller();
-const boundaryElement = document.querySelector('#boundary');
+const controller = new Controller(newCursor => document.body.style.cursor = newCursor);
 
 
-window.onresize = function (event) {
+window.addEventListener('resize', function (event) {
   Config.setBoundary(window.innerWidth, window.innerHeight);
-  boundaryElement.textContent = `${window.innerWidth}*${window.innerHeight}`;
-  return;
-};
+});
 
 
-window.oncontextmenu = function (event) {
+window.addEventListener('contextmenu', function (event) {
   event.preventDefault();
   event.stopPropagation();
-  return;
-};
+});
 
 
-window.onmousedown = function (event) {
+const gameMouseListener = function (event) {
   switch (event.button) {
     case 2:  // right-click
       controller.playerMove(event.clientX, event.clientY);
@@ -35,7 +31,6 @@ window.onmousedown = function (event) {
     default:
       console.log(event.button, event.clientX, event.clientY);
   }
-  return;
 };
 
 
@@ -56,15 +51,98 @@ const gameKeyListener = function (event) {
     default:
       console.log(event.key);
   }
-  return;
 };
 
 
-document.querySelector('#button').onclick = function () {
-  console.log('Game Start !');
-  Config.reset(window.innerWidth, window.innerHeight);
+const buildDashboard = function () {
+  const dashboard = document.createElementNS(SVG_NAMESPACE_URI, "svg");
+  setDomAttributes(dashboard, {
+    'width': '100%',
+    'height': '60',
+  });
 
-  const dagger = new Dagger(document.querySelector("#dagger"));
+  const experience = document.createElementNS(SVG_NAMESPACE_URI, "circle");
+  setDomAttributes(experience, {
+    'cx': '95',
+    'cy': '30',
+    'r': '28',
+    'fill': 'transparent',
+    'stroke': 'orange',
+    'stroke-width': '4',
+    'pathLength': '1000',
+    'stroke-dashoffset': '250',
+    'stroke-dasharray': '0',
+  });
+
+  const level = document.createElementNS(SVG_NAMESPACE_URI, "text");
+  setDomAttributes(level, {
+    'x': '95',
+    'y': '30',
+    'dominant-baseline': 'central',
+    'text-anchor': 'middle',
+    'textLength': '40',
+    'lengthAdjust': 'spacing',
+  });
+
+  const score = document.createElementNS(SVG_NAMESPACE_URI, "text");
+  setDomAttributes(score, {
+    'x': '135',
+    'y': '30',
+    'dominant-baseline': 'central',
+    'text-anchor': 'start',
+  });
+
+  const boundary = document.createElementNS(SVG_NAMESPACE_URI, "text");
+  setDomAttributes(boundary, {
+    'x': '100%',
+    'y': '0',
+    'dominant-baseline': 'hanging',
+    'text-anchor': 'end',
+  });
+
+  dashboard.append(experience, level, score, boundary);
+  return { dashboard, experience, level, score, boundary };
+};
+
+
+const buildScreen = function () {
+  const { dashboard, ...icons } = buildDashboard();
+  const dagger = document.createElement("canvas");
+  setDomAttributes(dagger, {
+    'width': '60',
+    'height': '60',
+  });
+  const timer = document.createElement("div");
+  const scoreIndicator = document.createElement("span");
+  scoreIndicator.style.color = 'tomato';
+  const comboIndicator = document.createElement("span");
+  comboIndicator.style.color = 'springgreen';
+  const indicators = document.createElement("div");
+  indicators.append(scoreIndicator, comboIndicator);
+
+  return {
+    dashboard, ...icons, dagger, timer,
+    scoreIndicator, comboIndicator, indicators,
+  };
+};
+
+
+const gameStart = function () {
+  console.log('Game Start !');
+  const dynamicObjects = buildScreen();
+  for (const [id, element] of Object.entries(dynamicObjects)) {
+    element.setAttribute('id', id);
+  }
+  document.querySelector('#screenLayer').replaceChildren(
+    dynamicObjects.dashboard,
+    dynamicObjects.dagger,
+    dynamicObjects.timer,
+    dynamicObjects.indicators,
+  );
+  Config.reset((w, h) => dynamicObjects.boundary.textContent = `${w}*${h}`);
+  Config.setBoundary(window.innerWidth, window.innerHeight);
+
+  const dagger = new Dagger(dynamicObjects.dagger);
   const hook = new Hook(document.createElementNS(SVG_NAMESPACE_URI, 'line'));
   const pudge = new Pudge(document.createElementNS(SVG_NAMESPACE_URI, 'circle'));
   pudge.addCastable(hook, dagger);
@@ -73,28 +151,25 @@ document.querySelector('#button').onclick = function () {
   const meatArray = Array.from({ 'length': Config.meatAmount }, buildMeat);
   meatArray.forEach(meat => meat.randomizePosition());
 
-  const battleField = document.querySelector("#battleField");
-  battleField.replaceChildren();
+  const battleField = document.createElementNS(SVG_NAMESPACE_URI, "svg");
+  battleField.setAttribute('id', 'battleField');
   battleField.append(hook.aniElem, pudge.aniElem, ...meatArray.map(meat => meat.aniElem));
+  document.querySelector('#battleFieldLayer').replaceChildren(battleField);
 
-  const elementIdArray = [
-    'experience', 'level', 'score', 'timer',
-    'indicators', 'scoreIndicator', 'comboIndicator',
-  ];
-  const elementEntries = elementIdArray.map(id => [id, document.querySelector(`#${id}`)]);
-  controller.initialize(Object.fromEntries(elementEntries));
+  controller.initialize(60, dynamicObjects);
   controller.setObjects({ pudge, hook, dagger, meatArray });
   Clock.setState(true);
-  window.onkeydown = gameKeyListener;
+  window.addEventListener('keydown', gameKeyListener);
+  window.addEventListener('mousedown', gameMouseListener);
   document.querySelector('#information').style.display = 'none';
-  return;
 };
 
 
 const gameOver = function (hookTrialArray) {
   console.log('Game Over !');
   Clock.setState(false);
-  window.onkeydown = null;
+  window.removeEventListener('keydown', gameKeyListener);
+  window.removeEventListener('mousedown', gameMouseListener);
   const [bestRecord, currentScore] = Config.updateAndGetRecord();
   const difference = bestRecord - currentScore;
   const successCount = hookTrialArray.reduce((accu, value) => accu + value, 0);
@@ -106,8 +181,10 @@ const gameOver = function (hookTrialArray) {
     `[肉鉤] 使用次數 ${hookTrialArray.length} 命中率 ${accuracy}% 最高連擊 ${maxStreak}`,
   ].join('<br />');
   document.querySelector('#information').style.display = 'grid';
-  return;
 };
+
+
+document.querySelector('#button').addEventListener('click', gameStart);
 
 
 window.setInterval(function () {
@@ -115,15 +192,10 @@ window.setInterval(function () {
   if (gameIsOver) {
     gameOver(controller.hook.trialArray);
   }
-  return;
 }, Config.modelUpdatePeriod);
 
 
 void function raf() {
   controller.updateViews();
   window.requestAnimationFrame(raf);
-  return;
 }();
-
-
-// TODO: document.createElementNS(SVG_NAMESPACE_URI, "svg");
