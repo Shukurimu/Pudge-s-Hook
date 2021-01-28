@@ -1,16 +1,14 @@
-import { SVG_NAMESPACE_URI, computeMaxStreak, setDomAttributes } from './Util';
-import { Clock } from './Stopwatch';
-import { Config, InputMode } from './Config';
-import { Dagger, Hook } from './Castable';
-import { Pudge, Meat } from './Movable';
-import { Controller } from './Controller';
+import { SVG_NAMESPACE_URI, computeMaxStreak } from './Util';
+import Clock from './Stopwatch';
+import Config from './Config';
+import { Controller, InputMode } from './Controller';
 
 
 const controller = new Controller(newCursor => document.body.style.cursor = newCursor);
 
 
 window.addEventListener('resize', function (event) {
-  Config.setBoundary(window.innerWidth, window.innerHeight);
+  controller.setBoundary(window.innerWidth, window.innerHeight);
 });
 
 
@@ -54,110 +52,12 @@ const gameKeyListener = function (event) {
 };
 
 
-const buildDashboard = function () {
-  const dashboard = document.createElementNS(SVG_NAMESPACE_URI, "svg");
-  setDomAttributes(dashboard, {
-    'width': '100%',
-    'height': '60',
-  });
-
-  const experience = document.createElementNS(SVG_NAMESPACE_URI, "circle");
-  setDomAttributes(experience, {
-    'cx': '95',
-    'cy': '30',
-    'r': '28',
-    'fill': 'transparent',
-    'stroke': 'orange',
-    'stroke-width': '4',
-    'pathLength': '1000',
-    'stroke-dashoffset': '250',
-    'stroke-dasharray': '0',
-  });
-
-  const level = document.createElementNS(SVG_NAMESPACE_URI, "text");
-  setDomAttributes(level, {
-    'x': '95',
-    'y': '30',
-    'dominant-baseline': 'central',
-    'text-anchor': 'middle',
-    'textLength': '40',
-    'lengthAdjust': 'spacing',
-  });
-
-  const score = document.createElementNS(SVG_NAMESPACE_URI, "text");
-  setDomAttributes(score, {
-    'x': '135',
-    'y': '30',
-    'dominant-baseline': 'central',
-    'text-anchor': 'start',
-  });
-
-  const boundary = document.createElementNS(SVG_NAMESPACE_URI, "text");
-  setDomAttributes(boundary, {
-    'x': '100%',
-    'y': '0',
-    'dominant-baseline': 'hanging',
-    'text-anchor': 'end',
-  });
-
-  dashboard.append(experience, level, score, boundary);
-  return { dashboard, experience, level, score, boundary };
-};
-
-
-const buildScreen = function () {
-  const { dashboard, ...icons } = buildDashboard();
-  const dagger = document.createElement("canvas");
-  setDomAttributes(dagger, {
-    'width': '60',
-    'height': '60',
-  });
-  const timer = document.createElement("div");
-  const scoreIndicator = document.createElement("span");
-  scoreIndicator.style.color = 'tomato';
-  const comboIndicator = document.createElement("span");
-  comboIndicator.style.color = 'springgreen';
-  const indicators = document.createElement("div");
-  indicators.append(scoreIndicator, comboIndicator);
-
-  return {
-    dashboard, ...icons, dagger, timer,
-    scoreIndicator, comboIndicator, indicators,
-  };
-};
-
-
 const gameStart = function () {
   console.log('Game Start !');
-  const dynamicObjects = buildScreen();
-  for (const [id, element] of Object.entries(dynamicObjects)) {
-    element.setAttribute('id', id);
-  }
-  document.querySelector('#screenLayer').replaceChildren(
-    dynamicObjects.dashboard,
-    dynamicObjects.dagger,
-    dynamicObjects.timer,
-    dynamicObjects.indicators,
-  );
-  Config.reset((w, h) => dynamicObjects.boundary.textContent = `${w}*${h}`);
-  Config.setBoundary(window.innerWidth, window.innerHeight);
+  controller.initialize(6, window.innerWidth, window.innerHeight);
+  document.querySelector('#screenLayer').replaceChildren(...controller.getScreenLayerElements());
+  document.querySelector('#battleFieldLayer').replaceChildren(controller.battleField);
 
-  const dagger = new Dagger(dynamicObjects.dagger);
-  const hook = new Hook(document.createElementNS(SVG_NAMESPACE_URI, 'line'));
-  const pudge = new Pudge(document.createElementNS(SVG_NAMESPACE_URI, 'circle'));
-  pudge.addCastable(hook, dagger);
-
-  const buildMeat = () => new Meat(document.createElementNS(SVG_NAMESPACE_URI, 'circle'));
-  const meatArray = Array.from({ 'length': Config.meatAmount }, buildMeat);
-  meatArray.forEach(meat => meat.randomizePosition());
-
-  const battleField = document.createElementNS(SVG_NAMESPACE_URI, "svg");
-  battleField.setAttribute('id', 'battleField');
-  battleField.append(hook.aniElem, pudge.aniElem, ...meatArray.map(meat => meat.aniElem));
-  document.querySelector('#battleFieldLayer').replaceChildren(battleField);
-
-  controller.initialize(60, dynamicObjects);
-  controller.setObjects({ pudge, hook, dagger, meatArray });
   Clock.setState(true);
   window.addEventListener('keydown', gameKeyListener);
   window.addEventListener('mousedown', gameMouseListener);

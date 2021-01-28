@@ -56,4 +56,4 @@ class Stopwatch {
 
 }
 
-export const Clock = new Stopwatch();
+export default new Stopwatch();

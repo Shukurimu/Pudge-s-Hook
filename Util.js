@@ -21,20 +21,3 @@ export function setDomAttributes(domElement, attributes) {
   }
   return;
 }
-
-export class AbstractObject {
-
-  constructor() {
-    this.x = 0;
-    this.y = 0;
-  }
-
-  updateModel(elapse) {
-    throw undefined;
-  }
-
-  updateView() {
-    throw undefined;
-  }
-
-}

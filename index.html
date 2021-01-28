@@ -23,58 +23,51 @@
       width: 100%;
     }
 
-    #battleField {
+    .battleField {
       height: 100%;
       width: 100%;
     }
 
-    #battleField circle {
+    .battleField circle {
       opacity: 0.75;
     }
 
-    #dagger {
-      background-image: url('./IconDagger.png');
-      background-repeat: no-repeat;
-      background-size: 0px 0px;
-    }
-
-    #dashboard {
+    .dashboard {
       position: absolute;
       top: 0;
       right: 0;
       font-size: 24px;
     }
 
-    #level {
+    .dashboardDagger {
+      background-image: url('./IconDagger.png');
+      background-repeat: no-repeat;
+      background-size: 0px 0px;
+    }
+
+    .dashboardLevel {
       font-family: Verdana, sans-serif;
       fill: orange;
     }
 
-    #score {
+    .dashboardScore {
       font-size: 48px;
       font-family: cursive, Georgia, Times, serif;
       fill: gold;
     }
 
-    #boundary{
+    .dashboardBoundary {
       font-family: 'Courier New', Courier, monospace;
       fill: skyblue;
     }
 
-    #timer {
+    .indicator {
       position: absolute;
-      bottom: 0;
-      right: 1vw;
-      font-size: 96px;
-      font-family: Arial, Helvetica, sans-serif;
-      color: skyblue;
-    }
-
-    #indicators {
-      position: absolute;
+      display: inline-block;
+      padding: 6px;
       opacity: 0;
       white-space: nowrap;
-      font-size: 28px;
+      font-size: 36px;
       font-family: cursive, Georgia, Times, serif;
       text-shadow: white 0 0 12px;
       transform: translate(-50%, -50%);
@@ -83,12 +76,21 @@
     }
 
     @keyframes indicatorAnimation {
-      0%  { opacity: 0; font-size: 36px; }
-      1%  { opacity: 1; }
-      10% { opacity: 0.3; }
-      30% { opacity: 1; }
-      50% { opacity: 0.3; }
-      70% { opacity: 1; font-size: 36px; }
+      0%   { opacity: 1; }
+      10%  { opacity: 0.3; }
+      30%  { opacity: 1; }
+      50%  { opacity: 0.3; }
+      70%  { opacity: 1; font-size: 36px; }
+      100% { opacity: 0; font-size: 28px; }
+    }
+
+    .timer {
+      position: absolute;
+      bottom: 0;
+      right: 1vw;
+      font-size: 96px;
+      font-family: Arial, Helvetica, sans-serif;
+      color: skyblue;
     }
 
     #information {

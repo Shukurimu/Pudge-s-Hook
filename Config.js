@@ -75,11 +75,10 @@ class ConstantConfig {
 }
 
 
-class LifeConfig extends ConstantConfig {
+class GlobalConfig extends ConstantConfig {
 
   constructor() {
     super();
-    this.boundarySetter = undefined;
     this.currentLevel = 0;
     this.currentScore = 0;
     this.x = 800;
@@ -111,7 +110,6 @@ class LifeConfig extends ConstantConfig {
     this.x = boundaryX;
     this.y = boundaryY;
     this.diagonal = Math.hypot(boundaryX, boundaryY);
-    this.boundarySetter(boundaryX, boundaryY);
     return;
   }
 
@@ -123,8 +121,7 @@ class LifeConfig extends ConstantConfig {
     return this.diagonal * this.current.get(KEY_HOOK_DISTANCE_RATIO);
   }
 
-  reset(boundarySetter) {
-    this.boundarySetter = boundarySetter;
+  reset() {
     this.currentLevel = 0;
     this.currentScore = 0;
     return;
@@ -165,5 +162,4 @@ class LifeConfig extends ConstantConfig {
 }
 
 
-export const Config = new LifeConfig();
-export const InputMode = Object.freeze({ 'Move': 'auto', 'Hook': 'crosshair', 'Dagger': 'cell' });
+export default new GlobalConfig();
