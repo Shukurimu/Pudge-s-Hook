@@ -1,5 +1,4 @@
 import { Castable } from './AbstractObject';
-import { getVectorPoint } from './Util';
 import Clock from './Stopwatch';
 import Config from './Config';
 
@@ -24,8 +23,8 @@ export default class Hook extends Castable {
     let exceedance = distance - Config.hookCastRange;
     let multiplier = Math.max(exceedance, 0) / distance;
     return [
-      getVectorPoint(caster.x, x, multiplier),
-      getVectorPoint(caster.y, y, multiplier),
+      this.getVectorPoint(caster.x, x, multiplier),
+      this.getVectorPoint(caster.y, y, multiplier),
       x,
       y,
     ];
@@ -42,8 +41,8 @@ export default class Hook extends Castable {
     let dx = this.destX - this.srcX;
     let dy = this.destY - this.srcY;
     let multiplier = castRange / Math.hypot(dx, dy);
-    this.destX = getVectorPoint(this.srcX, this.destX, multiplier);
-    this.destY = getVectorPoint(this.srcY, this.destY, multiplier);
+    this.destX = this.getVectorPoint(this.srcX, this.destX, multiplier);
+    this.destY = this.getVectorPoint(this.srcY, this.destY, multiplier);
     this.trialArray.push(0);
     return;
   }
@@ -54,8 +53,8 @@ export default class Hook extends Castable {
       return;
     }
     let multiplier = Math.abs(this.skillMid - Clock.now) / (this.skillEnd - this.skillMid);
-    this.x = getVectorPoint(this.destX, this.srcX, multiplier);
-    this.y = getVectorPoint(this.destY, this.srcY, multiplier);
+    this.x = this.getVectorPoint(this.destX, this.srcX, multiplier);
+    this.y = this.getVectorPoint(this.destY, this.srcY, multiplier);
     return;
   }
 
@@ -92,6 +91,16 @@ export default class Hook extends Castable {
 
   get streak() {
     return this.trialArray.length - this.trialArray.lastIndexOf(0) - 1;
+  }
+
+  getAnalyzeTextArray() {
+    const usage = this.trialArray.length;
+    const successedCount = this.trialArray.reduce((acc, cur) => acc + cur, 0);
+    const accuracy = usage === 0 ? 0 : successedCount / usage;
+    return [
+      `使用次數 ${usage}`,
+      `命中率 ${(accuracy * 100).toFixed(0)}%`,
+    ];
   }
 
 }

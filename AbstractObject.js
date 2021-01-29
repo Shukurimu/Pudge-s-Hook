@@ -17,6 +17,10 @@ class AbstractObject {
     throw undefined;
   }
 
+  getVectorPoint(vectorFrom, vectorTo, multiplier) {
+    return vectorFrom + (vectorTo - vectorFrom) * multiplier;
+  }
+
 }
 
 
@@ -145,6 +149,10 @@ export class Castable extends AbstractObject {
       this.linkedObject = null;
     }
     return;
+  }
+
+  getAnalyzeTextArray() {
+    throw undefined;
   }
 
 }

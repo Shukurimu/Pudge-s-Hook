@@ -1,4 +1,3 @@
-import { SVG_NAMESPACE_URI, computeMaxStreak, setDomAttributes } from './Util';
 import Clock from './Stopwatch';
 import Config from './Config';
 import Dagger from './Dagger';
@@ -6,9 +5,18 @@ import Hook from './Hook';
 import Pudge from './Pudge';
 import Meat from './Meat';
 
-export const InputMode = Object.freeze({ 'Move': 'auto', 'Hook': 'crosshair', 'Dagger': 'cell' });
+const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
+const InputMode = Object.freeze({ 'Move': 'auto', 'Hook': 'crosshair', 'Dagger': 'cell' });
 
-export class Controller {
+function setDomAttributes(domElement, attributes) {
+  for (const [attr, value] of Object.entries(attributes)) {
+    domElement.setAttribute(attr, value);
+  }
+  return;
+}
+
+
+export default class Controller {
 
   constructor(cursorSetter) {
     this.dagger = null;
@@ -214,8 +222,22 @@ export class Controller {
     return;
   }
 
-  setInputMode(inputMode) {
-    if (!Clock.isRunning()) {
+  keyEventHandler(keyString) {
+    const running = Clock.isRunning();
+    if (keyString === "Escape") {
+        Clock.setState(!running);
+        return;
+    }
+    if (!running) {
+      return;
+    }
+    let inputMode = null;
+    if (keyString === " ") {
+      inputMode = InputMode.Dagger;
+    } else if (keyString === "t") {
+      inputMode = InputMode.Hook;
+    } else {
+      console.log('UnusedKey', keyString);
       return;
     }
     if (this.castableInputMap.get(inputMode).isReady()) {

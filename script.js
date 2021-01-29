@@ -1,7 +1,6 @@
-import { SVG_NAMESPACE_URI, computeMaxStreak } from './Util';
 import Clock from './Stopwatch';
 import Config from './Config';
-import { Controller, InputMode } from './Controller';
+import Controller from './Controller';
 
 
 const controller = new Controller(newCursor => document.body.style.cursor = newCursor);
@@ -35,26 +34,17 @@ const gameMouseListener = function (event) {
 const gameKeyListener = function (event) {
   if (event.key === 'Tab') {
     event.preventDefault();
-  }
-  switch (event.key.toUpperCase()) {
-    case "ESCAPE":
-      Clock.setState(!Clock.isRunning());
-      break;
-    case " ":
-      controller.setInputMode(InputMode.Dagger);
-      break;
-    case "T":
-      controller.setInputMode(InputMode.Hook);
-      break;
-    default:
-      console.log(event.key);
+  } else {
+    controller.keyEventHandler(event.key);
   }
 };
 
 
-const gameStart = function () {
+document.querySelector('#button').addEventListener('click', function () {
   console.log('Game Start !');
-  controller.initialize(6, window.innerWidth, window.innerHeight);
+  const argsTimer = parseInt(new URL(document.location.href).searchParams.get('t'));
+  const initTimer = Number.isSafeInteger(argsTimer) ? Math.min(60, Math.max(1, argsTimer)) : 60;
+  controller.initialize(initTimer, window.innerWidth, window.innerHeight);
   document.querySelector('#screenLayer').replaceChildren(...controller.getScreenLayerElements());
   document.querySelector('#battleFieldLayer').replaceChildren(controller.battleField);
 
@@ -62,35 +52,33 @@ const gameStart = function () {
   window.addEventListener('keydown', gameKeyListener);
   window.addEventListener('mousedown', gameMouseListener);
   document.querySelector('#information').style.display = 'none';
-};
+});
 
 
-const gameOver = function (hookTrialArray) {
+const gameOver = function () {
   console.log('Game Over !');
   Clock.setState(false);
   window.removeEventListener('keydown', gameKeyListener);
   window.removeEventListener('mousedown', gameMouseListener);
   const [bestRecord, currentScore] = Config.updateAndGetRecord();
   const difference = bestRecord - currentScore;
-  const successCount = hookTrialArray.reduce((accu, value) => accu + value, 0);
-  const accuracy = Math.round(100 * successCount / Math.max(hookTrialArray.length, 1));
-  const maxStreak = computeMaxStreak(hookTrialArray);
-  document.querySelector('#message').innerHTML = [
-    "~ 遊戲結束 ~",
-    `本次分數 ${currentScore} / 歷史最高分數 <abbr title='差距 ${difference}'>${bestRecord}</abbr>`,
-    `[肉鉤] 使用次數 ${hookTrialArray.length} 命中率 ${accuracy}% 最高連擊 ${maxStreak}`,
-  ].join('<br />');
+  for (const [id, textArray] of [
+    ['message', ["~ 遊戲結束 ~"]],
+    ['discriptionMeat', [`本次分數 ${currentScore}`]],
+    ['discriptionRight', [`歷史最高 ${bestRecord}`]],
+    ['discriptionLeft', [`差距 ${difference}`]],
+    ['discriptionHook', controller.hook.getAnalyzeTextArray()],
+    ['discriptionDagger', controller.dagger.getAnalyzeTextArray()],
+  ]) {
+    document.querySelector(`#${id}`).innerHTML = textArray.join('<br />');
+  }
   document.querySelector('#information').style.display = 'grid';
 };
 
 
-document.querySelector('#button').addEventListener('click', gameStart);
-
-
 window.setInterval(function () {
-  let gameIsOver = controller.updateModels();
-  if (gameIsOver) {
-    gameOver(controller.hook.trialArray);
+  if (controller.updateModels()) {
+    gameOver();
   }
 }, Config.modelUpdatePeriod);
 
