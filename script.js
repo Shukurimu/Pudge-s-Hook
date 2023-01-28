@@ -42,6 +42,7 @@ const gameKeyListener = function (event) {
 
 document.querySelector('#button').addEventListener('click', function () {
   console.log('Game Start !');
+  Config.reset();
   const argsTimer = parseInt(new URL(document.location.href).searchParams.get('t'));
   const initTimer = Number.isSafeInteger(argsTimer) ? Math.min(60, Math.max(1, argsTimer)) : 60;
   controller.initialize(initTimer, window.innerWidth, window.innerHeight);

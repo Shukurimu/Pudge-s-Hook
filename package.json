@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "parcel index.html",
     "build": "rm -rf dist && parcel build --no-source-maps index.html",
+    "msbuild": "rd /s /q dist && parcel build --no-source-maps index.html",
     "buildmap": "rm -rf dist && parcel build index.html",
+    "msbuildmap": "rd /s /q dist && parcel build index.html",
     "serve": "npx serve dist"
   },
   "repository": {
