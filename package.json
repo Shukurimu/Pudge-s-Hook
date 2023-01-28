@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/Shukurimu/Pudge-s-Hook#readme",
   "devDependencies": {
-    "cssnano": "^4.1.10",
+    "cssnano": "^5.1.14",
     "eslint": "^7.17.0"
   }
 }
